@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 # docker_manager.py - Docker client and image management
 
-from pathlib import Path
-from typing import Optional
-
 import docker
 from docker.errors import ImageNotFound
 
+from ..constants import DOCKER_HUB_IMAGE
+
 
 class DockerManager:
-    """Manages Docker client connection and image building."""
+    """Manages Docker client connection and image management."""
     
-    IMAGE_NAME = "claude-agent:latest"
+    IMAGE_NAME = DOCKER_HUB_IMAGE
     
     def __init__(self):
         """Initialize Docker client and verify connectivity."""
@@ -25,39 +24,22 @@ class DockerManager:
             )
     
     def ensure_image(self):
-        """Build Docker image if it doesn't exist."""
+        """Ensure Docker image is available by pulling from Docker Hub."""
         try:
             self.client.images.get(self.IMAGE_NAME)
             print(f"[agent] Using existing image: {self.IMAGE_NAME}")
+            return
         except ImageNotFound:
-            print(f"[agent] Building Docker image {self.IMAGE_NAME}...")
-            
-            # Get directory where this module is located (should be src/agent/)
-            # Go up two levels to get to project root
-            project_root = Path(__file__).parent.parent.parent
-            dockerfile_path = project_root / "docker" / "Dockerfile"
-            entrypoint_path = project_root / "docker" / "entrypoint.py"
-            
-            # Check if required files exist
-            if not dockerfile_path.exists():
-                raise FileNotFoundError(f"Dockerfile not found at {dockerfile_path}")
-            if not entrypoint_path.exists():
-                raise FileNotFoundError(f"entrypoint.py not found at {entrypoint_path}")
-            
-            # Build image from the docker directory
-            try:
-                image, logs = self.client.images.build(
-                    path=str(dockerfile_path.parent),
-                    tag=self.IMAGE_NAME,
-                    rm=True,
-                    forcerm=True
-                )
-                
-                # Print build logs
-                for log in logs:
-                    if 'stream' in log:
-                        print(log['stream'].strip())
-                
-                print(f"[agent] Successfully built {self.IMAGE_NAME}")
-            except Exception as e:
-                raise RuntimeError(f"Failed to build Docker image: {e}")
+            pass
+        
+        # Pull from Docker Hub
+        try:
+            print(f"[agent] Pulling image from Docker Hub: {self.IMAGE_NAME}")
+            self.client.images.pull(self.IMAGE_NAME)
+            print(f"[agent] Successfully pulled {self.IMAGE_NAME}")
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to pull Docker image {self.IMAGE_NAME} from Docker Hub.\n"
+                f"Please ensure the image exists and you have internet connectivity.\n"
+                f"Error: {e}"
+            )
