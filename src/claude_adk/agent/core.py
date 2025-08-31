@@ -78,19 +78,21 @@ class Agent:
         self.tool_connector.connect_tool(tool)
         return self
     
-    async def run(self, prompt: str) -> Dict[str, Any]:
+    async def run(self, prompt: str, verbose: bool = False) -> Dict[str, Any]:
         """
         Run the agent with the given prompt.
         
         Args:
             prompt: The instruction for Claude
+            verbose: If True, print detailed message processing info
             
         Returns:
-            Dict with success status and response
+            Dict with success status, response, and metadata
         """
         return self.executor.execute(
             prompt=prompt,
             oauth_token=self.oauth_token,
             tool_urls=self.tool_connector.get_connected_tools(),
-            system_prompt=self.system_prompt
+            system_prompt=self.system_prompt,
+            verbose=verbose
         )

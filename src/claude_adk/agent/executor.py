@@ -22,7 +22,7 @@ class ContainerExecutor:
         self.docker_client = docker_client
         self.image_name = image_name
     
-    def execute(self, prompt: str, oauth_token: str, tool_urls: Dict[str, str], system_prompt: Optional[str] = None) -> Dict[str, Any]:
+    def execute(self, prompt: str, oauth_token: str, tool_urls: Dict[str, str], system_prompt: Optional[str] = None, verbose: bool = False) -> Dict[str, Any]:
         """
         Execute prompt in Docker container with connected tools.
         
@@ -31,16 +31,18 @@ class ContainerExecutor:
             oauth_token: Claude Code OAuth token
             tool_urls: Dictionary of tool_name -> url mappings
             system_prompt: Optional system prompt to customize agent behavior
+            verbose: If True, enable verbose output in container
             
         Returns:
-            Dict with success status and response
+            Dict with success status, response, and metadata
         """
         print(f"[agent] Running with prompt: {prompt[:100]}...")
         
         # Prepare environment variables
         environment = {
             'CLAUDE_CODE_OAUTH_TOKEN': oauth_token,
-            'AGENT_PROMPT': prompt
+            'AGENT_PROMPT': prompt,
+            'AGENT_VERBOSE': '1' if verbose else '0'
         }
         
         # Add system prompt if provided
@@ -65,7 +67,7 @@ class ContainerExecutor:
                 command="python /app/entrypoint.py",  # Use the built-in entrypoint
                 environment=environment,
                 extra_hosts={'host.docker.internal': 'host-gateway'},
-                auto_remove=True,  # Automatically remove container when it exits
+                auto_remove=not verbose,  # Automatically remove container if not verbose mode
                 stdout=True,
                 stderr=True,
                 detach=False

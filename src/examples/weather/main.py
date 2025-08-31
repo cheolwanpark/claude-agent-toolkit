@@ -53,7 +53,8 @@ async def run_weather_demo():
         result = await agent.run(
             "Please get the current weather conditions for Tokyo, Japan. "
             "Provide comprehensive information including temperature, humidity, wind, "
-            "and practical advice about what to expect."
+            "and practical advice about what to expect.",
+            verbose=True
         )
         
         print(f"\n[Agent Response - Demo 1]:")
@@ -65,7 +66,8 @@ async def run_weather_demo():
         print(f"\n🌦️  Demo 2: Weather Forecast")
         result = await agent.run(
             "Now get a 3-day weather forecast for London, England. "
-            "Help me understand what the weather will be like and what I should plan for."
+            "Help me understand what the weather will be like and what I should plan for.",
+            verbose=True
         )
         
         print(f"\n[Agent Response - Demo 2]:")
@@ -77,7 +79,8 @@ async def run_weather_demo():
         print(f"\n🔄 Demo 3: Weather Comparison")
         result = await agent.run(
             "Compare the current weather between New York City and Los Angeles. "
-            "Which city has better weather right now and why?"
+            "Which city has better weather right now and why?",
+            verbose=True
         )
         
         print(f"\n[Agent Response - Demo 3]:")
@@ -90,7 +93,8 @@ async def run_weather_demo():
         result = await agent.run(
             "I'm planning to travel from Paris to Sydney next week. "
             "Can you help me understand what weather to expect and what to pack? "
-            "Also, add both cities to my favorites list for future reference."
+            "Also, add both cities to my favorites list for future reference.",
+            verbose=True
         )
         
         print(f"\n[Agent Response - Demo 4]:")
@@ -102,7 +106,8 @@ async def run_weather_demo():
         print(f"\n📊 Demo 5: State Management")
         result = await agent.run(
             "Show me my weather query history and favorite locations. "
-            "What locations have I been checking the weather for?"
+            "What locations have I been checking the weather for?",
+            verbose=True
         )
         
         print(f"\n[Agent Response - Demo 5]:")
@@ -176,7 +181,7 @@ async def run_interactive_mode():
             if not user_input:
                 continue
             
-            result = await agent.run(f"User question: {user_input}")
+            result = await agent.run(f"User question: {user_input}", verbose=True)
             
             if result.get('success'):
                 print(f"\n🤖 Weather Assistant: {result.get('response')}")

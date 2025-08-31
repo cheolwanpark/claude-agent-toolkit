@@ -4,7 +4,11 @@
 import asyncio
 import json
 import os
-from claude_code_sdk import query, ClaudeCodeOptions, AssistantMessage, TextBlock
+from claude_code_sdk import (
+    query, ClaudeCodeOptions, 
+    AssistantMessage, UserMessage, SystemMessage, ResultMessage,
+    TextBlock, ThinkingBlock, ToolUseBlock, ToolResultBlock
+)
 
 
 async def main():
@@ -15,6 +19,7 @@ async def main():
     tools_json = os.environ.get('MCP_TOOLS', '{}')
     oauth_token = os.environ.get('CLAUDE_CODE_OAUTH_TOKEN', '')
     system_prompt = os.environ.get('AGENT_SYSTEM_PROMPT')
+    verbose = os.environ.get('AGENT_VERBOSE', '0') == '1'
     
     if not prompt:
         print(json.dumps({
@@ -74,9 +79,11 @@ async def main():
     print(f"[entrypoint] Claude Code options - allowed_tools: {options.allowed_tools}", flush=True)
     print(f"[entrypoint] Claude Code options - mcp_servers: {len(options.mcp_servers)} servers", flush=True)
     
-    # Collect results
-    results = []
+    # Initialize collectors
+    assistant_responses = []  # For final response text
+    result_metadata = None
     error = None
+    final_result = None
     
     try:
         print(f"[entrypoint] Starting Claude Code query with {len(mcp_servers)} MCP servers...", flush=True)
@@ -84,34 +91,85 @@ async def main():
         message_count = 0
         async for message in query(prompt=prompt, options=options):
             message_count += 1
-            print(f"[entrypoint] Received message #{message_count}: {type(message).__name__}", flush=True)
+            if verbose:
+                print(f"[entrypoint] Received message #{message_count}: {type(message).__name__}", flush=True)
             
-            if isinstance(message, AssistantMessage):
-                print(f"[entrypoint] AssistantMessage content blocks: {len(message.content)}", flush=True)
-                for i, block in enumerate(message.content):
-                    print(f"[entrypoint] Block {i}: {type(block).__name__}", flush=True)
+            # Handle UserMessage (may contain ToolResultBlock)
+            if isinstance(message, UserMessage):
+                if verbose:
+                    print(f"[User Message]", flush=True)
+                    if isinstance(message.content, str):
+                        print(f"  Content: {message.content[:200]}...", flush=True)
+                    else:
+                        for block in message.content:
+                            if isinstance(block, ToolResultBlock):
+                                content_preview = block.content[:100] if block.content else 'None'
+                                print(f"  ToolResult: {block.tool_use_id} -> {content_preview}...", flush=True)
+            
+            # Handle AssistantMessage with ALL block types
+            elif isinstance(message, AssistantMessage):
+                if verbose:
+                    print(f"[Assistant Message] Model: {message.model}", flush=True)
+                
+                for block in message.content:
                     if isinstance(block, TextBlock):
-                        results.append(block.text)
-                        print(f"[entrypoint] Text block content (first 200 chars): {block.text[:200]}", flush=True)
-            else:
-                print(f"[entrypoint] Non-assistant message: {message}", flush=True)
+                        assistant_responses.append(block.text)
+                        if verbose:
+                            print(f"  TextBlock: {block.text[:200]}...", flush=True)
+                    
+                    elif isinstance(block, ThinkingBlock):
+                        if verbose:
+                            print(f"  ThinkingBlock: {block.thinking[:200]}...", flush=True)
+                    
+                    elif isinstance(block, ToolUseBlock):
+                        if verbose:
+                            print(f"  ToolUse: {block.name}({block.id}) with {list(block.input.keys())}", flush=True)
+                    
+                    elif isinstance(block, ToolResultBlock):
+                        if verbose:
+                            status = "ERROR" if block.is_error else "OK"
+                            print(f"  ToolResult[{status}]: {block.tool_use_id}", flush=True)
+            
+            # Handle ResultMessage for metadata
+            elif isinstance(message, ResultMessage):
+                result_metadata = {
+                    "duration_ms": message.duration_ms,
+                    "total_cost_usd": message.total_cost_usd,
+                    "usage": message.usage,
+                    "is_error": message.is_error,
+                    "num_turns": message.num_turns
+                }
+                # Use ResultMessage.result if available
+                if message.result:
+                    final_result = message.result
+                
+                if verbose:
+                    cost = message.total_cost_usd or 0
+                    print(f"[Result Message] Duration: {message.duration_ms}ms, Cost: ${cost:.4f}", flush=True)
+            
+            # Handle SystemMessage
+            elif isinstance(message, SystemMessage):
+                if verbose:
+                    print(f"[System Message] Type: {message.subtype}", flush=True)
             
     except Exception as e:
         error = str(e)
         print(f"[entrypoint] Error during execution: {e}", flush=True)
         import traceback
         traceback.print_exc()
-        results.append(f"Error: {e}")
     
     # Prepare final output
-    if results:
-        response_text = "\n".join(results)
+    if final_result:
+        response_text = final_result
+    elif assistant_responses:
+        response_text = "\n".join(assistant_responses)
     else:
         response_text = "No response generated"
     
     output = {
-        "success": error is None and len(results) > 0,
+        "success": error is None and (final_result or len(assistant_responses) > 0),
         "response": response_text,
+        "metadata": result_metadata,
         "error": error
     }
     
