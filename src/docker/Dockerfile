@@ -4,21 +4,20 @@ FROM python:3.11-slim
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
 
-# Install system dependencies
+# Install system dependencies and Node.js in single layer
 RUN apt-get update && apt-get install -y \
     curl \
     git \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
-
-# Install Node.js (required for Claude Code)
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
-    apt-get install -y nodejs
 
 # Install Claude Code CLI
 RUN npm install -g @anthropic-ai/claude-code
 
-# Install Python packages
-RUN pip install --no-cache-dir \
+# Install Python packages with optimized compilation
+RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
+    pip install --no-cache-dir --only-binary=:all: --prefer-binary \
     claude-code-sdk \
     httpx \
     fastmcp \
