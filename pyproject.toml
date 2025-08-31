@@ -10,10 +10,10 @@ readme = "README.md"
 requires-python = ">=3.12"
 license = {text = "MIT"}
 authors = [
-    {name = "Claude ADK Contributors"},
+    {name = "Cheolwan Park", email = "cheolwan.park552@gmail.com"},
 ]
 maintainers = [
-    {name = "Claude ADK Contributors"},
+    {name = "Cheolwan Park", email = "cheolwan.park552@gmail.com"},
 ]
 keywords = [
     "claude-code",
@@ -90,7 +90,6 @@ packages = ["src"]
 [tool.hatch.build.targets.sdist]
 include = [
     "/src",
-    "/examples",
     "/README.md",
     "/CHANGELOG.md",
     "/LICENSE",
@@ -217,6 +216,11 @@ target-version = "py312"
 [tool.ruff.per-file-ignores]
 "__init__.py" = ["F401"]
 "tests/*" = ["S101"]
+
+[tool.uv.workspace]
+members = [
+    "src/examples",
+]
 
 [dependency-groups]
 build = [

@@ -60,7 +60,7 @@ class ContainerExecutor:
                 command="python /app/entrypoint.py",  # Use the built-in entrypoint
                 environment=environment,
                 extra_hosts={'host.docker.internal': 'host-gateway'},
-                remove=False,  # Keep container for debugging
+                auto_remove=True,  # Automatically remove container when it exits
                 stdout=True,
                 stderr=True,
                 detach=False

@@ -1,0 +1,181 @@
+#!/usr/bin/env python3
+# calculator/main.py - Calculator demo using Claude ADK Agent
+
+import asyncio
+import os
+import sys
+
+# Import from claude-adk package
+from claude_adk import Agent
+
+# Import our calculator tool and prompts
+from tool import CalculatorTool
+from prompt import CALCULATOR_SYSTEM_PROMPT, WELCOME_MESSAGE
+
+
+async def run_calculator_demo():
+    """Run the calculator demo with interactive examples."""
+    print("\n" + "="*60)
+    print("CLAUDE ADK CALCULATOR DEMO")
+    print("="*60)
+    print("\nThis demo showcases:")
+    print("1. Custom tool implementation (CalculatorTool)")
+    print("2. State management across operations")
+    print("3. Professional agent prompting")
+    print("4. Multi-step mathematical problem solving")
+    
+    # Check for OAuth token
+    if not os.environ.get('CLAUDE_CODE_OAUTH_TOKEN'):
+        print("\n⚠️  WARNING: CLAUDE_CODE_OAUTH_TOKEN not set!")
+        print("Please set your OAuth token: export CLAUDE_CODE_OAUTH_TOKEN='your-token'")
+        print("Get your token from: https://claude.ai/code")
+        return False
+    
+    try:
+        # Start the calculator tool
+        calculator_tool = CalculatorTool().run(workers=2)
+        
+        # Create agent and connect to tool
+        agent = Agent()
+        agent.connect(calculator_tool)
+        
+        print("\n📝 Starting Calculator Agent Demo")
+        print("-" * 40)
+        
+        # Demo 1: Basic arithmetic
+        print(f"\n🧮 Demo 1: Basic Arithmetic Operations")
+        result = await agent.run(
+            f"{CALCULATOR_SYSTEM_PROMPT}\n\n"
+            "Please calculate: (25 + 75) × 3 - 50. "
+            "Break this down step by step and show your work."
+        )
+        
+        print(f"\n[Agent Response - Demo 1]:")
+        print(f"Success: {result.get('success')}")
+        response = result.get('response', '')
+        print(f"Response: {response[:800]}...")
+        
+        # Demo 2: Advanced operations
+        print(f"\n🧮 Demo 2: Advanced Mathematical Operations")
+        result = await agent.run(
+            "Now calculate the square root of the last result, then raise it to the power of 2.5. "
+            "What do you notice about these operations?"
+        )
+        
+        print(f"\n[Agent Response - Demo 2]:")
+        print(f"Success: {result.get('success')}")
+        response = result.get('response', '')
+        print(f"Response: {response[:800]}...")
+        
+        # Demo 3: History and state management
+        print(f"\n🧮 Demo 3: History and State Management")
+        result = await agent.run(
+            "Please show me the calculation history from our session, "
+            "then explain what the last result represents mathematically."
+        )
+        
+        print(f"\n[Agent Response - Demo 3]:")
+        print(f"Success: {result.get('success')}")
+        response = result.get('response', '')
+        print(f"Response: {response[:800]}...")
+        
+        # Demo 4: Complex word problem
+        print(f"\n🧮 Demo 4: Complex Problem Solving")
+        result = await agent.run(
+            "Solve this problem step by step: "
+            "A rectangular garden is 15 meters long and 8 meters wide. "
+            "If I want to put a fence around it that costs $12 per meter, "
+            "and I also want to cover the entire area with grass seed that costs $3 per square meter, "
+            "what will be the total cost?"
+        )
+        
+        print(f"\n[Agent Response - Demo 4]:")
+        print(f"Success: {result.get('success')}")
+        response = result.get('response', '')
+        print(f"Response: {response[:1000]}...")
+        
+        # Verify that calculations were actually performed by checking tool state
+        tool_state = calculator_tool.state
+        operation_count = tool_state.get("operation_count", 0)
+        
+        if operation_count > 0:
+            print(f"\n✅ SUCCESS: Calculator tool was used {operation_count} times")
+            print(f"Last result: {tool_state.get('last_result')}")
+            return True
+        else:
+            print(f"\n❌ FAILURE: Calculator tool was not used")
+            return False
+            
+    except RuntimeError as e:
+        if "Cannot connect to Docker" in str(e):
+            print(f"\n{e}")
+            print("\n💡 Please start Docker Desktop and run this demo again.")
+            return False
+        else:
+            raise
+    except Exception as e:
+        print(f"\n❌ Error during calculator demo: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+    
+    finally:
+        print("\n" + "="*60)
+        print("CALCULATOR DEMO COMPLETED")
+        print("="*60)
+
+
+async def run_interactive_mode():
+    """Run the calculator in interactive mode for user input."""
+    print(WELCOME_MESSAGE)
+    
+    # Check for OAuth token
+    if not os.environ.get('CLAUDE_CODE_OAUTH_TOKEN'):
+        print("\n⚠️  WARNING: CLAUDE_CODE_OAUTH_TOKEN not set!")
+        print("Please set your OAuth token: export CLAUDE_CODE_OAUTH_TOKEN='your-token'")
+        print("Get your token from: https://claude.ai/code")
+        return
+    
+    try:
+        # Start the calculator tool
+        calculator_tool = CalculatorTool().run(workers=2)
+        
+        # Create agent and connect to tool
+        agent = Agent()
+        agent.connect(calculator_tool)
+        
+        print(f"\n🤖 Calculator agent is ready! Type 'quit' to exit.")
+        
+        while True:
+            user_input = input("\n📝 Your question: ").strip()
+            
+            if user_input.lower() in ['quit', 'exit', 'q']:
+                break
+            
+            if not user_input:
+                continue
+            
+            result = await agent.run(f"{CALCULATOR_SYSTEM_PROMPT}\n\nUser question: {user_input}")
+            
+            if result.get('success'):
+                print(f"\n🤖 Assistant: {result.get('response')}")
+            else:
+                print(f"\n❌ Error: {result.get('error', 'Unknown error occurred')}")
+    
+    except Exception as e:
+        print(f"\n❌ Error in interactive mode: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+async def main():
+    """Main entry point for the calculator demo."""
+    if len(sys.argv) > 1 and sys.argv[1] == "--interactive":
+        await run_interactive_mode()
+    else:
+        success = await run_calculator_demo()
+        sys.exit(0 if success else 1)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

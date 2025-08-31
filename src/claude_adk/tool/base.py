@@ -52,14 +52,18 @@ class BaseTool:
     def connection_url(self) -> str:
         """Get MCP connection URL."""
         if not self._port:
-            raise RuntimeError("Tool is not running")
+            raise RuntimeError(
+                "Tool is not running. Call tool.run() first, then access connection_url."
+            )
         return f"http://{self._host}:{self._port}/mcp"  # no trailing slash
     
     @property
     def health_url(self) -> str:
         """Get health check URL."""
         if not self._port:
-            raise RuntimeError("Tool is not running")
+            raise RuntimeError(
+                "Tool is not running. Call tool.run() first, then access health_url."
+            )
         return f"http://{self._host}:{self._port}/health"
     
     def run(self, host: str = "127.0.0.1", port: Optional[int] = None, *, workers: Optional[int] = None) -> 'BaseTool':

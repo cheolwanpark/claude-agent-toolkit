@@ -15,10 +15,10 @@ A Python framework for building Claude Code agents with custom tools, designed t
 
 ### Core Components
 
-- **Agent Framework** (`src/agent/`) - Docker-isolated Agent class that runs Claude Code with MCP tool support
-- **MCP Tool Framework** (`src/tool/`) - BaseTool class for creating custom MCP tools with state management
-- **Example Tools** (`examples/`) - Demonstration tools showing practical agent development patterns
-- **Docker Environment** (`docker/`) - Isolated environment with Claude Code CLI and dependencies
+- **Agent Framework** (`src/claude_adk/agent/`) - Docker-isolated Agent class that runs Claude Code with MCP tool support
+- **MCP Tool Framework** (`src/claude_adk/tool/`) - BaseTool class for creating custom MCP tools with state management
+- **Example Tools** (`src/examples/`) - Demonstration tools showing practical agent development patterns
+- **Docker Environment** (`src/docker/`) - Isolated environment with Claude Code CLI and dependencies
 
 ## Quick Start
 
@@ -46,13 +46,15 @@ export CLAUDE_CODE_OAUTH_TOKEN='your-token-here'
 
 ```bash
 # Start Docker Desktop first, then run the verification demo
-python main.py
+# Run calculator example:
+cd src/examples/calculator && python main.py
+# Run weather example:
+cd src/examples/weather && python main.py
 ```
 
-This will run three demonstration examples:
-1. **Secret Generator** - Shows stateful tool interaction patterns
-2. **Hash Computer** - Demonstrates CPU-bound operations with Claude Code
-3. **Multi-Tool** - Shows Claude Code coordinating multiple tools in workflows
+This will run demonstration examples:
+1. **Calculator Demo** - Shows stateful mathematical operations and problem solving
+2. **Weather Demo** - Demonstrates external API integration with real-time data
 
 ## Tool Development
 
@@ -61,7 +63,7 @@ This will run three demonstration examples:
 Create tools by inheriting from `BaseTool` and using the `@tool()` decorator:
 
 ```python
-from src.tool import BaseTool, tool
+from claude_adk import BaseTool, tool
 
 class MyTool(BaseTool):
     def __init__(self):
@@ -84,7 +86,7 @@ class MyTool(BaseTool):
 ### Using Tools with Agents
 
 ```python
-from src.agent import Agent
+from claude_adk import Agent
 
 # Create and start tool
 my_tool = MyTool().run(workers=2)
@@ -168,7 +170,7 @@ export CLAUDE_CODE_OAUTH_TOKEN='your-token-here'
 Inherit from `BaseTool` and implement `@tool` methods that extend Claude Code's capabilities.
 
 ### 4. Build Your Agent  
-Use `python examples/main.py` to see demonstrations or create custom agent scripts.
+Use the examples in `src/examples/` to see demonstrations or create custom agent scripts.
 
 ### 5. Deploy to Production
 Use your Claude Code subscription to run agents at scale with custom tool integration.

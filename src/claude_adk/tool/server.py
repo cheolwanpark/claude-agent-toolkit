@@ -41,10 +41,26 @@ class MCPServer:
     def _collect_tool_methods(self) -> List[Tuple[Callable, Dict[str, Any]]]:
         """Collect all methods marked with @tool decorator."""
         methods = []
-        for _name, member in inspect.getmembers(self.tool_instance, predicate=inspect.ismethod):
-            if getattr(member, "__mcp_tool__", False):
-                meta = getattr(member, "__mcp_meta__", {})
-                methods.append((member, meta))
+        
+        for name in dir(self.tool_instance):
+            # Skip private/magic methods
+            if name.startswith('_'):
+                continue
+                
+            # Use getattr_static to check if it's a property without evaluation
+            static_attr = inspect.getattr_static(type(self.tool_instance), name, None)
+            if isinstance(static_attr, property):
+                continue  # Skip all properties - we only want methods
+                
+            try:
+                member = getattr(self.tool_instance, name)
+                if inspect.ismethod(member) and getattr(member, "__mcp_tool__", False):
+                    meta = getattr(member, "__mcp_meta__", {})
+                    methods.append((member, meta))
+            except Exception:
+                # Skip any other problematic attributes
+                continue
+        
         return methods
     
     def _register_cpu_tool(self, mcp: FastMCP, method: Callable, meta: Dict[str, Any]):

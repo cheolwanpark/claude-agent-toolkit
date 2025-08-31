@@ -9,10 +9,10 @@ This is a Claude Code Agent Development Kit (claude-adk) - a Python framework fo
 ## Architecture
 
 ### Core Components
-- **Agent Framework** (`src/agent/`): Docker-isolated Agent class that runs Claude Code with MCP tool support
-- **MCP Tool Framework** (`src/tool/`): BaseTool class for creating custom MCP tools with state management
-- **Example Tools** (`examples/`): Demonstration tools showing practical agent development patterns
-- **Docker Environment** (`Dockerfile`, `docker/`): Isolated environment with Claude Code CLI and dependencies
+- **Agent Framework** (`src/claude_adk/agent/`): Docker-isolated Agent class that runs Claude Code with MCP tool support
+- **MCP Tool Framework** (`src/claude_adk/tool/`): BaseTool class for creating custom MCP tools with state management
+- **Example Tools** (`src/examples/`): Demonstration tools showing practical agent development patterns
+- **Docker Environment** (`src/docker/`): Isolated environment with Claude Code CLI and dependencies
 
 ### Agent Development Pattern
 1. Create custom tools by inheriting from `BaseTool` 
@@ -33,7 +33,10 @@ export CLAUDE_CODE_OAUTH_TOKEN='your-token-here'
 uv sync
 
 # Run the demonstration examples
-python main.py
+# Calculator example:
+cd src/examples/calculator && python main.py
+# Weather example:
+cd src/examples/weather && python main.py
 ```
 
 ### Package Management
@@ -58,14 +61,14 @@ uv lock --upgrade
 1. **Start Docker Desktop** - Required for agent execution
 2. **Set OAuth Token** - Export CLAUDE_CODE_OAUTH_TOKEN environment variable  
 3. **Create Custom Tools** - Inherit from BaseTool and implement @tool methods
-4. **Build Your Agent** - Use `python main.py` to see examples or create custom agent scripts
+4. **Build Your Agent** - Use examples in `src/examples/` to see demonstrations or create custom agent scripts
 5. **Deploy to Production** - Use your Claude Code subscription to run agents at scale
 
 ## Code Patterns
 
 ### Tool Creation
 ```python
-from src.tool import BaseTool, tool
+from claude_adk import BaseTool, tool
 
 class MyTool(BaseTool):
     def __init__(self):
@@ -80,7 +83,7 @@ class MyTool(BaseTool):
 
 ### Agent Usage
 ```python
-from src.agent import Agent
+from claude_adk import Agent
 
 # Create and connect to tools
 agent = Agent()
