@@ -10,6 +10,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import httpx
 from fastmcp import FastMCP
+from fastmcp.utilities.logging import configure_logging
 
 from .worker import WorkerPoolManager
 from .state_manager import apply_patch_inplace
@@ -18,17 +19,22 @@ from .state_manager import apply_patch_inplace
 class MCPServer:
     """HTTP server for MCP tool endpoints."""
     
-    def __init__(self, tool_instance: Any):
+    def __init__(self, tool_instance: Any, log_level: str = "ERROR"):
         """
         Initialize MCP server for a tool instance.
         
         Args:
             tool_instance: Tool instance to serve
+            log_level: Logging level for FastMCP (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         """
         self.tool_instance = tool_instance
         self.worker_manager = WorkerPoolManager()
         self._server_thread: Optional[threading.Thread] = None
         self._ready = False
+        self._log_level = log_level
+        
+        # Configure FastMCP logging
+        configure_logging(level=log_level)
     
     def _pick_port(self, host: str) -> int:
         """Pick an available port on the given host."""
@@ -128,7 +134,13 @@ class MCPServer:
     def _run_server_thread(self, host: str, port: int):
         """Run MCP server in a separate thread."""
         mcp = self._create_mcp_app()
-        mcp.run(transport="http", host=host, port=port)
+        mcp.run(
+            transport="http", 
+            host=host, 
+            port=port,
+            show_banner=False,  # Always suppress banner
+            log_level=self._log_level
+        )
     
     def start(self, host: str = "127.0.0.1", port: Optional[int] = None) -> tuple[str, int]:
         """

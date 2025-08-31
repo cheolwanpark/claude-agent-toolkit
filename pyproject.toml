@@ -85,7 +85,7 @@ build = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src"]
+packages = ["src/claude_adk"]
 
 [tool.hatch.build.targets.sdist]
 include = [
