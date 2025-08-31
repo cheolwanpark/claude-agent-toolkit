@@ -40,5 +40,9 @@ USER claudeuser
 # Set Python to unbuffered mode
 ENV PYTHONUNBUFFERED=1
 
+# Add metadata
+LABEL org.opencontainers.image.source="https://github.com/cheolwanpark/claude-adk"
+LABEL org.opencontainers.image.description="Claude Agent Development Kit runtime environment"
+
 # Default command
 CMD ["python", "/app/entrypoint.py"]
