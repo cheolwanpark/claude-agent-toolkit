@@ -97,12 +97,21 @@ from claude_adk import Agent
 # Create and start tool
 my_tool = MyTool().run(workers=2)
 
-# Create agent and connect to tool  
-agent = Agent()
-agent.connect(my_tool)
+# New pattern (recommended) - cleaner initialization
+agent = Agent(
+    system_prompt="You are a helpful assistant specialized in calculations",
+    tools=[my_tool]
+)
 
-# Run agent with prompt
-result = await agent.run("Please increment the counter twice and tell me the result")
+# Traditional pattern - still supported
+# agent = Agent()
+# agent.connect(my_tool)
+
+# Run agent with prompt (verbose=True shows detailed message processing)
+result = await agent.run(
+    "Please increment the counter twice and tell me the result",
+    verbose=True  # Shows detailed Claude Code interaction logs
+)
 print(f"Success: {result['success']}")
 print(f"Response: {result['response']}")
 
@@ -134,9 +143,18 @@ Unlike generic agent frameworks, this toolkit specifically leverages Claude Code
 
 ```python
 class Agent:
-    def __init__(self, oauth_token: Optional[str] = None)  # Your Claude Code token
+    def __init__(                                          # Initialize agent
+        self,
+        oauth_token: Optional[str] = None,                 # Your Claude Code token
+        system_prompt: Optional[str] = None,               # Custom agent behavior
+        tools: Optional[List[BaseTool]] = None             # Tools to connect automatically
+    )
     def connect(self, tool: BaseTool) -> 'Agent'           # Connect custom tools  
-    async def run(self, prompt: str) -> Dict[str, Any]     # Run Claude Code with tools
+    async def run(                                         # Run Claude Code with tools
+        self,
+        prompt: str,                                       # Instruction for Claude
+        verbose: bool = False                              # Show detailed processing logs
+    ) -> Dict[str, Any]
 ```
 
 ### BaseTool Class  

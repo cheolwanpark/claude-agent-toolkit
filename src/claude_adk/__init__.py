@@ -7,5 +7,5 @@ Claude Code agents with custom MCP tools.
 from .agent import Agent
 from .tool import BaseTool, tool
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 __all__ = ["Agent", "BaseTool", "tool"]
