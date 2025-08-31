@@ -1,5 +1,9 @@
 FROM python:3.11-slim
 
+# Platform-aware build arguments
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     curl \
@@ -43,6 +47,7 @@ ENV PYTHONUNBUFFERED=1
 # Add metadata
 LABEL org.opencontainers.image.source="https://github.com/cheolwanpark/claude-adk"
 LABEL org.opencontainers.image.description="Claude Agent Development Kit runtime environment"
+LABEL org.opencontainers.image.platform="${TARGETPLATFORM}"
 
 # Default command
 CMD ["python", "/app/entrypoint.py"]
