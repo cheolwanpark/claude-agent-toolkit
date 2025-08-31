@@ -4,23 +4,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Claude Agent Development Kit (claude-adk) - a framework for testing and verifying that Claude Code agents actually call MCP tools correctly. The project provides a Docker-isolated environment where agents can connect to custom MCP tools and verify tool interactions through unpredictable results.
+This is a Claude Code Agent Development Kit (claude-adk) - a Python framework for building Claude Code agents with custom tools. The project provides a Docker-isolated environment where Claude Code can orchestrate custom MCP tools for production workflows, leveraging your Claude Code subscription token.
 
 ## Architecture
 
 ### Core Components
-- **Agent Framework** (`agent.py`): Docker-isolated Agent class that runs Claude Code with MCP tool support
-- **MCP Tool Framework** (`tool.py`): BaseTool class for creating custom MCP tools with state management
-- **Demo Tools** (`main.py`): SecretGeneratorTool and HashComputerTool for verification testing
-- **Docker Environment** (`Dockerfile`): Isolated environment with Claude Code CLI and dependencies
-- **Entry Point** (`entrypoint.py`): Runs inside Docker containers to execute Claude Code queries
+- **Agent Framework** (`src/agent/`): Docker-isolated Agent class that runs Claude Code with MCP tool support
+- **MCP Tool Framework** (`src/tool/`): BaseTool class for creating custom MCP tools with state management
+- **Example Tools** (`examples/`): Demonstration tools showing practical agent development patterns
+- **Docker Environment** (`Dockerfile`, `docker/`): Isolated environment with Claude Code CLI and dependencies
 
-### Tool Development Pattern
-1. Create tools by inheriting from `BaseTool`
-2. Use `@tool()` decorator to register MCP methods
-3. Mark CPU-bound operations with `cpu_bound=True`
-4. State is managed through `self.state` dictionary with automatic versioning
-5. Tools run as HTTP MCP servers accessible to Docker containers
+### Agent Development Pattern
+1. Create custom tools by inheriting from `BaseTool` 
+2. Use `@tool()` decorator to register MCP methods that extend Claude Code's capabilities
+3. Mark CPU-bound operations with `cpu_bound=True` for parallel processing
+4. State is managed through `self.state` dictionary with automatic versioning and conflict resolution
+5. Tools run as HTTP MCP servers that Claude Code can orchestrate in Docker containers
+6. Claude Code makes intelligent decisions about which tools to use and when
 
 ## Development Commands
 
@@ -32,7 +32,7 @@ export CLAUDE_CODE_OAUTH_TOKEN='your-token-here'
 # Install dependencies
 uv sync
 
-# Run the main verification demo
+# Run the demonstration examples
 python main.py
 ```
 
@@ -47,24 +47,25 @@ uv lock --upgrade
 
 ## Key Dependencies
 
-- Python 3.12+ with `docker`, `fastmcp`, `httpx`, `jsonpatch`, `uvicorn`
+- Python 3.12+ with `uv` package manager
+- Required packages: `docker`, `fastmcp`, `httpx`, `jsonpatch`, `uvicorn`
 - Docker Desktop (must be running)
-- Claude Code OAuth token
-- Node.js 20 (installed in Docker)
+- Claude Code OAuth token from [Claude Code](https://claude.ai/code)
+- Node.js 20 (installed in Docker environment)
 
 ## Development Workflow
 
 1. **Start Docker Desktop** - Required for agent execution
 2. **Set OAuth Token** - Export CLAUDE_CODE_OAUTH_TOKEN environment variable  
 3. **Create Custom Tools** - Inherit from BaseTool and implement @tool methods
-4. **Run Verification** - Use `python main.py` to test agent-tool interactions
-5. **Check Tool State** - Verify tools were actually called vs agent hallucinations
+4. **Build Your Agent** - Use `python main.py` to see examples or create custom agent scripts
+5. **Deploy to Production** - Use your Claude Code subscription to run agents at scale
 
 ## Code Patterns
 
 ### Tool Creation
 ```python
-from tool import BaseTool, tool
+from src.tool import BaseTool, tool
 
 class MyTool(BaseTool):
     def __init__(self):
@@ -79,7 +80,7 @@ class MyTool(BaseTool):
 
 ### Agent Usage
 ```python
-from agent import Agent
+from src.agent import Agent
 
 # Create and connect to tools
 agent = Agent()
@@ -89,12 +90,12 @@ agent.connect(my_tool)
 result = await agent.run("Use my_method with parameter 'test'")
 ```
 
-## Verification Approach
+## Claude Code Agent Approach
 
-This framework verifies agent behavior by:
-1. Using tools that generate unpredictable results (secrets, timestamped hashes)  
-2. Checking tool state to confirm methods were actually called
-3. Verifying unpredictable values appear in agent responses
-4. Testing multi-tool coordination and state management
+This framework enables building production Claude Code agents by:
+1. Leveraging Claude Code's advanced reasoning with your subscription token
+2. Providing custom tools that extend Claude Code's capabilities
+3. Managing stateful workflows where Claude Code builds context across tool interactions
+4. Orchestrating multi-tool coordination through Claude Code's intelligent decision-making
 
-No traditional unit tests - verification happens through runtime agent testing.
+The framework focuses on production-ready agent development rather than testing - you build agents that use Claude Code's intelligence with your custom tool implementations.

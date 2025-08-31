@@ -1,0 +1,162 @@
+#!/usr/bin/env python3
+# server.py - HTTP server management for MCP tools
+
+import asyncio
+import inspect
+import socket
+import threading
+import time
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
+import httpx
+from fastmcp import FastMCP
+
+from .worker import WorkerPoolManager
+from .state_manager import apply_patch_inplace
+
+
+class MCPServer:
+    """HTTP server for MCP tool endpoints."""
+    
+    def __init__(self, tool_instance: Any):
+        """
+        Initialize MCP server for a tool instance.
+        
+        Args:
+            tool_instance: Tool instance to serve
+        """
+        self.tool_instance = tool_instance
+        self.worker_manager = WorkerPoolManager()
+        self._server_thread: Optional[threading.Thread] = None
+        self._ready = False
+    
+    def _pick_port(self, host: str) -> int:
+        """Pick an available port on the given host."""
+        s = socket.socket()
+        s.bind((host, 0))
+        port = s.getsockname()[1]
+        s.close()
+        return port
+    
+    def _collect_tool_methods(self) -> List[Tuple[Callable, Dict[str, Any]]]:
+        """Collect all methods marked with @tool decorator."""
+        methods = []
+        for _name, member in inspect.getmembers(self.tool_instance, predicate=inspect.ismethod):
+            if getattr(member, "__mcp_tool__", False):
+                meta = getattr(member, "__mcp_meta__", {})
+                methods.append((member, meta))
+        return methods
+    
+    def _register_cpu_tool(self, mcp: FastMCP, method: Callable, meta: Dict[str, Any]):
+        """Register CPU-bound tool method with worker pool execution."""
+        sig = inspect.signature(method)
+        params = [str(p) for p in sig.parameters.values()]
+        param_list = ", ".join(params)
+        param_names = [p.name for p in sig.parameters.values()]
+
+        snapshot_cfg_fields: List[str] = meta.get("snapshot", [])
+
+        async def __dispatcher__(**kw):
+            # Snapshot state + config
+            state_snapshot, current_version = self.tool_instance._state_manager.get_snapshot()
+            config_fields = {k: getattr(self.tool_instance, k) for k in snapshot_cfg_fields}
+            
+            args = tuple(kw[p] for p in param_names)
+            
+            result = await self.worker_manager.execute_cpu_bound(
+                method, meta, state_snapshot, current_version, config_fields, args, {}
+            )
+            
+            if "error" in result:
+                return result
+            
+            # Commit patch
+            self.tool_instance._state_manager.apply_changes(result["patch"])
+            return result["result"]
+
+        # Generate wrapper with SAME signature as original
+        ns: Dict[str, Any] = {"__dispatcher__": __dispatcher__}
+        code = f"async def _wrapped({param_list}):\n    kw = dict()\n"
+        for name in param_names:
+            code += f"    kw['{name}'] = {name}\n"
+        code += "    return await __dispatcher__(**kw)\n"
+        exec(code, ns)
+        wrapped = ns["_wrapped"]
+        wrapped.__name__ = method.__name__
+        wrapped.__doc__ = method.__doc__
+        try:
+            wrapped.__annotations__ = method.__func__.__annotations__
+        except Exception:
+            pass
+
+        mcp.tool(name=meta["name"], description=meta["description"])(wrapped)
+    
+    def _create_mcp_app(self) -> FastMCP:
+        """Create FastMCP application with tool endpoints."""
+        mcp = FastMCP(name=self.tool_instance.__class__.__name__)
+
+        @mcp.custom_route("/health", methods=["GET"])
+        async def health(_):
+            from starlette.responses import PlainTextResponse
+            return PlainTextResponse("OK", status_code=200)
+
+        # Register all tool methods
+        for method, meta in self._collect_tool_methods():
+            if meta.get("cpu_bound", False):
+                self._register_cpu_tool(mcp, method, meta)
+            else:
+                mcp.tool(name=meta["name"], description=meta["description"])(method)
+
+        return mcp
+    
+    def _run_server_thread(self, host: str, port: int):
+        """Run MCP server in a separate thread."""
+        mcp = self._create_mcp_app()
+        mcp.run(transport="http", host=host, port=port)
+    
+    def start(self, host: str = "127.0.0.1", port: Optional[int] = None) -> tuple[str, int]:
+        """
+        Start the MCP server.
+        
+        Args:
+            host: Host to bind to
+            port: Port to bind to (auto-select if None)
+            
+        Returns:
+            Tuple of (host, port) the server is running on
+        """
+        if self._server_thread:
+            raise RuntimeError("Server already running")
+        
+        actual_port = port or self._pick_port(host)
+        
+        self._server_thread = threading.Thread(
+            target=self._run_server_thread,
+            args=(host, actual_port),
+            daemon=True,
+        )
+        self._server_thread.start()
+        self._wait_ready(host, actual_port)
+        return host, actual_port
+    
+    def _wait_ready(self, host: str, port: int, timeout: float = 10.0):
+        """Wait for server to be ready."""
+        health_url = f"http://{host}:{port}/health"
+        start = time.time()
+        last_err = None
+        
+        while time.time() - start < timeout:
+            try:
+                r = httpx.get(health_url, timeout=0.5)
+                if r.status_code == 200:
+                    self._ready = True
+                    return
+            except Exception as e:
+                last_err = e
+            time.sleep(0.1)
+        
+        raise TimeoutError(f"MCP server not ready at {health_url} ({last_err})")
+    
+    def cleanup(self):
+        """Clean up server resources."""
+        self.worker_manager.cleanup()
