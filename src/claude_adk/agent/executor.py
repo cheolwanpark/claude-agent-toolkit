@@ -3,7 +3,7 @@
 
 import json
 import uuid
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import docker
 
@@ -22,7 +22,7 @@ class ContainerExecutor:
         self.docker_client = docker_client
         self.image_name = image_name
     
-    def execute(self, prompt: str, oauth_token: str, tool_urls: Dict[str, str]) -> Dict[str, Any]:
+    def execute(self, prompt: str, oauth_token: str, tool_urls: Dict[str, str], system_prompt: Optional[str] = None) -> Dict[str, Any]:
         """
         Execute prompt in Docker container with connected tools.
         
@@ -30,6 +30,7 @@ class ContainerExecutor:
             prompt: The instruction for Claude
             oauth_token: Claude Code OAuth token
             tool_urls: Dictionary of tool_name -> url mappings
+            system_prompt: Optional system prompt to customize agent behavior
             
         Returns:
             Dict with success status and response
@@ -41,6 +42,10 @@ class ContainerExecutor:
             'CLAUDE_CODE_OAUTH_TOKEN': oauth_token,
             'AGENT_PROMPT': prompt
         }
+        
+        # Add system prompt if provided
+        if system_prompt:
+            environment['AGENT_SYSTEM_PROMPT'] = system_prompt
         
         # Add all connected tools as separate environment variables
         if tool_urls:

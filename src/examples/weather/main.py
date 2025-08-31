@@ -35,9 +35,15 @@ async def run_weather_demo():
         # Start the weather tool
         weather_tool = WeatherTool().run(workers=2)
         
-        # Create agent and connect to tool
-        agent = Agent()
-        agent.connect(weather_tool)
+        # Create agent with new pattern (system prompt + tools)
+        agent = Agent(
+            system_prompt=WEATHER_SYSTEM_PROMPT,
+            tools=[weather_tool]
+        )
+        
+        # NOTE: The old pattern still works:
+        # agent = Agent()
+        # agent.connect(weather_tool)
         
         print("\n📝 Starting Weather Agent Demo")
         print("-" * 40)
@@ -45,7 +51,6 @@ async def run_weather_demo():
         # Demo 1: Current weather for a major city
         print(f"\n🌤️  Demo 1: Current Weather Conditions")
         result = await agent.run(
-            f"{WEATHER_SYSTEM_PROMPT}\n\n"
             "Please get the current weather conditions for Tokyo, Japan. "
             "Provide comprehensive information including temperature, humidity, wind, "
             "and practical advice about what to expect."
@@ -153,9 +158,11 @@ async def run_interactive_mode():
         # Start the weather tool
         weather_tool = WeatherTool().run(workers=2)
         
-        # Create agent and connect to tool
-        agent = Agent()
-        agent.connect(weather_tool)
+        # Create agent with system prompt for interactive mode
+        agent = Agent(
+            system_prompt=WEATHER_SYSTEM_PROMPT,
+            tools=[weather_tool]
+        )
         
         print(f"\n🤖 Weather assistant is ready! Type 'quit' to exit.")
         print(f"💡 Try: 'What's the weather in Paris?' or 'Compare NYC and LA weather'")
@@ -169,7 +176,7 @@ async def run_interactive_mode():
             if not user_input:
                 continue
             
-            result = await agent.run(f"{WEATHER_SYSTEM_PROMPT}\n\nUser question: {user_input}")
+            result = await agent.run(f"User question: {user_input}")
             
             if result.get('success'):
                 print(f"\n🤖 Weather Assistant: {result.get('response')}")

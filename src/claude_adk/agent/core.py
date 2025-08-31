@@ -2,7 +2,7 @@
 # core.py - Main Agent class with simplified interface
 
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from .docker_manager import DockerManager
 from .tool_connector import ToolConnector
@@ -14,20 +14,37 @@ class Agent:
     Docker-isolated Agent that runs Claude Code with MCP tool support.
     
     Usage:
+        # Traditional pattern
         agent = Agent(oauth_token="...")
         agent.connect(tool1)
         agent.connect(tool2)
         result = await agent.run("Your prompt")
+        
+        # New pattern (cleaner)
+        agent = Agent(
+            oauth_token="...",
+            system_prompt="You are a helpful assistant",
+            tools=[tool1, tool2]
+        )
+        result = await agent.run("Your prompt")
     """
     
-    def __init__(self, oauth_token: Optional[str] = None):
+    def __init__(
+        self, 
+        oauth_token: Optional[str] = None,
+        system_prompt: Optional[str] = None,
+        tools: Optional[List[Any]] = None
+    ):
         """
         Initialize the Agent.
         
         Args:
             oauth_token: Claude Code OAuth token (or use CLAUDE_CODE_OAUTH_TOKEN env var)
+            system_prompt: System prompt to customize agent behavior
+            tools: List of tool instances to connect automatically
         """
         self.oauth_token = oauth_token or os.environ.get('CLAUDE_CODE_OAUTH_TOKEN', '')
+        self.system_prompt = system_prompt
         
         if not self.oauth_token:
             raise ValueError("OAuth token required: pass oauth_token or set CLAUDE_CODE_OAUTH_TOKEN")
@@ -42,6 +59,11 @@ class Agent:
         
         # Ensure Docker image exists
         self.docker_manager.ensure_image()
+        
+        # Connect tools if provided
+        if tools:
+            for tool in tools:
+                self.connect(tool)
     
     def connect(self, tool: Any) -> 'Agent':
         """
@@ -69,5 +91,6 @@ class Agent:
         return self.executor.execute(
             prompt=prompt,
             oauth_token=self.oauth_token,
-            tool_urls=self.tool_connector.get_connected_tools()
+            tool_urls=self.tool_connector.get_connected_tools(),
+            system_prompt=self.system_prompt
         )

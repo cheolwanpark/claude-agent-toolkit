@@ -35,9 +35,15 @@ async def run_calculator_demo():
         # Start the calculator tool
         calculator_tool = CalculatorTool().run(workers=2)
         
-        # Create agent and connect to tool
-        agent = Agent()
-        agent.connect(calculator_tool)
+        # Create agent with new pattern (system prompt + tools)
+        agent = Agent(
+            system_prompt=CALCULATOR_SYSTEM_PROMPT,
+            tools=[calculator_tool]
+        )
+        
+        # NOTE: The old pattern still works:
+        # agent = Agent()
+        # agent.connect(calculator_tool)
         
         print("\n📝 Starting Calculator Agent Demo")
         print("-" * 40)
@@ -45,7 +51,6 @@ async def run_calculator_demo():
         # Demo 1: Basic arithmetic
         print(f"\n🧮 Demo 1: Basic Arithmetic Operations")
         result = await agent.run(
-            f"{CALCULATOR_SYSTEM_PROMPT}\n\n"
             "Please calculate: (25 + 75) × 3 - 50. "
             "Break this down step by step and show your work."
         )
@@ -140,9 +145,11 @@ async def run_interactive_mode():
         # Start the calculator tool
         calculator_tool = CalculatorTool().run(workers=2)
         
-        # Create agent and connect to tool
-        agent = Agent()
-        agent.connect(calculator_tool)
+        # Create agent with system prompt for interactive mode
+        agent = Agent(
+            system_prompt=CALCULATOR_SYSTEM_PROMPT,
+            tools=[calculator_tool]
+        )
         
         print(f"\n🤖 Calculator agent is ready! Type 'quit' to exit.")
         
@@ -155,7 +162,7 @@ async def run_interactive_mode():
             if not user_input:
                 continue
             
-            result = await agent.run(f"{CALCULATOR_SYSTEM_PROMPT}\n\nUser question: {user_input}")
+            result = await agent.run(f"User question: {user_input}")
             
             if result.get('success'):
                 print(f"\n🤖 Assistant: {result.get('response')}")

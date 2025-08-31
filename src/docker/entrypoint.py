@@ -14,6 +14,7 @@ async def main():
     prompt = os.environ.get('AGENT_PROMPT', '')
     tools_json = os.environ.get('MCP_TOOLS', '{}')
     oauth_token = os.environ.get('CLAUDE_CODE_OAUTH_TOKEN', '')
+    system_prompt = os.environ.get('AGENT_SYSTEM_PROMPT')
     
     if not prompt:
         print(json.dumps({
@@ -65,9 +66,9 @@ async def main():
     print(f"[entrypoint] Tool URLs: {json.dumps(tool_urls, indent=2)}", flush=True)
     
     options = ClaudeCodeOptions(
-        max_turns=5,
         permission_mode="bypassPermissions",
-        mcp_servers=mcp_servers if mcp_servers else {}
+        mcp_servers=mcp_servers if mcp_servers else {},
+        system_prompt=system_prompt
     )
     
     print(f"[entrypoint] Claude Code options - allowed_tools: {options.allowed_tools}", flush=True)
