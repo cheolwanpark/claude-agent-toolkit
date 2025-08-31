@@ -31,12 +31,14 @@ A Python framework for building Claude Code agents with custom tools, designed t
 ### Installation
 
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd claude-adk
+# Using pip
+pip install claude-adk
 
-# Install dependencies
-uv sync
+# Using uv
+uv add claude-adk
+
+# Using poetry
+poetry add claude-adk
 
 # Set your OAuth token
 export CLAUDE_CODE_OAUTH_TOKEN='your-token-here'
@@ -45,6 +47,10 @@ export CLAUDE_CODE_OAUTH_TOKEN='your-token-here'
 ### Run the Demo
 
 ```bash
+# Clone the repository for examples
+git clone https://github.com/cheolwanpark/claude-adk.git
+cd claude-adk
+
 # Start Docker Desktop first, then run the verification demo
 # Run calculator example:
 cd src/examples/calculator && python main.py
