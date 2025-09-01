@@ -107,6 +107,30 @@ cd src/examples/calculator && python main.py
 cd src/examples/weather && python main.py
 ```
 
+## Configuration
+
+### Constants File (`src/claude_agent_toolkit/constants.py`)
+
+The framework uses a centralized constants file for shared configuration values used across multiple modules:
+
+```python
+# Docker networking configuration
+DOCKER_LOCALHOST_MAPPINGS = {
+    "localhost": "host.docker.internal",
+    "127.0.0.1": "host.docker.internal",
+}
+DOCKER_HOST_GATEWAY = "host-gateway"
+
+# Environment variable names
+ENV_CLAUDE_CODE_OAUTH_TOKEN = "CLAUDE_CODE_OAUTH_TOKEN"
+
+# Container naming
+CONTAINER_NAME_PREFIX = "agent-"
+CONTAINER_UUID_LENGTH = 8
+```
+
+**Constants Policy**: Only values used across multiple modules are centralized. Function defaults, version numbers, and single-use values remain in their original locations following Python best practices.
+
 ### Package Management
 ```bash
 # Add dependencies

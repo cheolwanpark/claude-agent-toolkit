@@ -9,6 +9,7 @@ import docker
 
 from ..logging import get_logger
 from ..exceptions import ExecutionError
+from ..constants import DOCKER_HOST_GATEWAY, CONTAINER_NAME_PREFIX, CONTAINER_UUID_LENGTH
 
 logger = get_logger('agent')
 
@@ -62,7 +63,7 @@ class ContainerExecutor:
         
         try:
             # Run container with entrypoint.py
-            container_name = f"agent-{uuid.uuid4().hex[:8]}"
+            container_name = f"{CONTAINER_NAME_PREFIX}{uuid.uuid4().hex[:CONTAINER_UUID_LENGTH]}"
             
             logger.debug("Starting container %s", container_name)
             
@@ -71,7 +72,7 @@ class ContainerExecutor:
                 name=container_name,
                 command="python /app/entrypoint.py",  # Use the built-in entrypoint
                 environment=environment,
-                extra_hosts={'host.docker.internal': 'host-gateway'},
+                extra_hosts={'host.docker.internal': DOCKER_HOST_GATEWAY},
                 auto_remove=not verbose,  # Automatically remove container if not verbose mode
                 stdout=True,
                 stderr=True,

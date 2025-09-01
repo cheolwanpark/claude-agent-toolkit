@@ -5,6 +5,7 @@ from typing import Any, Dict
 
 from ..logging import get_logger
 from ..exceptions import ConfigurationError
+from ..constants import DOCKER_LOCALHOST_MAPPINGS
 
 logger = get_logger('agent')
 
@@ -37,8 +38,8 @@ class ToolConnector:
         
         # Rewrite localhost URLs for Docker container access
         url = tool.connection_url
-        url = url.replace('localhost', 'host.docker.internal') 
-        url = url.replace('127.0.0.1', 'host.docker.internal')
+        for localhost, docker_host in DOCKER_LOCALHOST_MAPPINGS.items():
+            url = url.replace(localhost, docker_host)
         
         self.tool_urls[tool_name] = url
         logger.info("Connected to %s at %s", tool_name, url)

@@ -8,6 +8,7 @@ from .docker_manager import DockerManager
 from .tool_connector import ToolConnector
 from .executor import ContainerExecutor
 from ..exceptions import ConfigurationError
+from ..constants import ENV_CLAUDE_CODE_OAUTH_TOKEN
 
 
 class Agent:
@@ -40,15 +41,15 @@ class Agent:
         Initialize the Agent.
         
         Args:
-            oauth_token: Claude Code OAuth token (or use CLAUDE_CODE_OAUTH_TOKEN env var)
+            oauth_token: Claude Code OAuth token (or use ENV_CLAUDE_CODE_OAUTH_TOKEN env var)
             system_prompt: System prompt to customize agent behavior
             tools: List of tool instances to connect automatically
         """
-        self.oauth_token = oauth_token or os.environ.get('CLAUDE_CODE_OAUTH_TOKEN', '')
+        self.oauth_token = oauth_token or os.environ.get(ENV_CLAUDE_CODE_OAUTH_TOKEN, '')
         self.system_prompt = system_prompt
         
         if not self.oauth_token:
-            raise ConfigurationError("OAuth token required: pass oauth_token or set CLAUDE_CODE_OAUTH_TOKEN")
+            raise ConfigurationError(f"OAuth token required: pass oauth_token or set {ENV_CLAUDE_CODE_OAUTH_TOKEN}")
         
         # Initialize components
         self.docker_manager = DockerManager()
