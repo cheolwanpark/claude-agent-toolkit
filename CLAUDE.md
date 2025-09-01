@@ -46,7 +46,7 @@ Claude Agent Toolkit implements a distributed architecture where custom MCP tool
 - **WorkerManager** (`worker.py`): Process pool for CPU-bound operations with state snapshots
 
 #### Docker Environment
-- **Pre-built Image**: `cheolwanpark/claude-agent-toolkit:latest` - Production Docker image with Claude Code CLI
+- **Pre-built Image**: `cheolwanpark/claude-agent-toolkit:0.1.1` - Production Docker image with Claude Code CLI
 - **Host Networking**: Container uses host network to access MCP tool servers
 - **Entrypoint** (`src/docker/entrypoint.py`): Container initialization and MCP client configuration
 
@@ -350,6 +350,45 @@ agent = Agent(model="claude-opus-4-1-20250805")
 - **Sonnet**: General purpose, balanced tasks, good default choice
 - **Opus**: Complex reasoning, detailed analysis, maximum capability needed
 
+## Docker Image Version Safety
+
+Claude Agent Toolkit enforces strict version matching between PyPI package and Docker image for maximum safety and compatibility.
+
+### Automatic Version Matching
+- **Safety First**: Docker image version **automatically matches** the installed package version (`__version__`)
+- **No Configuration**: No parameters needed - version matching is enforced internally
+- **No Fallback**: Exact version match required - no fallback for maximum safety
+
+### Version Consistency Examples
+
+```python
+from claude_agent_toolkit import Agent
+
+# All these examples use the SAME Docker image version
+# matching the installed claude-agent-toolkit version
+
+agent = Agent(oauth_token="your-token")
+# ✅ Uses: cheolwanpark/claude-agent-toolkit:0.1.1 (if package version is 0.1.1)
+
+agent = Agent(
+    system_prompt="You are a helpful assistant",
+    tools=[my_tool]
+)
+# ✅ Uses: cheolwanpark/claude-agent-toolkit:0.1.1 (same version as above)
+```
+
+### Safety Benefits
+- **Perfect Version Consistency**: PyPI and Docker versions always match exactly
+- **No Version Conflicts**: Eliminates all compatibility issues
+- **Predictable Behavior**: Same package version = identical Docker environment
+- **Production Safe**: No accidental version mismatches or unexpected fallbacks
+
+### Strict Version Enforcement
+- **Exact Match Required**: Only the specific version Docker image will be used
+- **No Fallback Policy**: If the exact version is unavailable, the operation fails safely
+- **Clear Error Messages**: Provides specific guidance when version-specific image is missing
+- **Zero Tolerance**: No compromise on version consistency for maximum reliability
+
 ### Error Handling and Exception Management
 
 Claude Agent Toolkit uses a comprehensive exception hierarchy for clear error handling:
@@ -463,6 +502,8 @@ class Agent:
 - `system_prompt`: Custom system prompt to modify agent behavior
 - `tools`: List of tool instances to connect automatically
 - `model`: Model to use ("opus", "sonnet", "haiku", or any Claude model name/ID)
+
+**Note:** Docker image version automatically matches the installed package version for safety.
 
 **Methods:**
 - `connect(tool: BaseTool)`: Connect a tool instance to the agent
@@ -827,7 +868,7 @@ tool.run()  # Start server
 - Consider using `conflict_policy="error"` for critical operations
 
 ### 3. Docker Optimization
-- Pre-pull the Docker image: `docker pull cheolwanpark/claude-agent-toolkit:latest`
+- Pre-pull the Docker image: `docker pull cheolwanpark/claude-agent-toolkit:0.1.1`
 - Use Docker's host networking mode (done automatically)
 - Monitor container resource usage in production
 

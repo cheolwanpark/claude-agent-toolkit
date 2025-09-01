@@ -6,14 +6,21 @@ Constants and configuration values for the Claude Agent Toolkit.
 """
 
 # Docker Hub repository configuration
-DOCKER_HUB_REPO = "cheolwanpark/claude-agent"
-DEFAULT_IMAGE_TAG = "latest"
+DOCKER_HUB_REPO = "cheolwanpark/claude-agent-toolkit"
 
-# Docker image name for Docker Hub
-DOCKER_HUB_IMAGE = f"{DOCKER_HUB_REPO}:{DEFAULT_IMAGE_TAG}"
-
-# Local image name (fallback)
-LOCAL_IMAGE_NAME = "claude-agent:latest"
+def get_versioned_docker_image():
+    """
+    Get Docker image name using the current package version for safety.
+    
+    Returns:
+        Docker image name with version tag matching the installed package exactly
+        
+    Note:
+        This enforces strict version consistency between PyPI package and Docker image.
+        No fallback is available - version must match exactly.
+    """
+    from . import __version__
+    return f"{DOCKER_HUB_REPO}:{__version__}"
 
 # Docker networking configuration
 DOCKER_LOCALHOST_MAPPINGS = {

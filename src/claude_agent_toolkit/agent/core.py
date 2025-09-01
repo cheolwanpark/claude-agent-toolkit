@@ -46,6 +46,9 @@ class Agent:
             system_prompt: System prompt to customize agent behavior
             tools: List of tool instances to connect automatically
             model: Model to use ("opus", "sonnet", "haiku", or any Claude model name/ID)
+        
+        Note:
+            Docker image version automatically matches the installed package version (__version__) for safety.
         """
         self.oauth_token = oauth_token or os.environ.get(ENV_CLAUDE_CODE_OAUTH_TOKEN, '')
         self.system_prompt = system_prompt

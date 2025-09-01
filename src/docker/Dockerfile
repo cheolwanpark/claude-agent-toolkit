@@ -3,6 +3,7 @@ FROM python:3.11-slim
 # Platform-aware build arguments
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
+ARG VERSION
 
 # Install system dependencies and Node.js in single layer
 RUN apt-get update && apt-get install -y \
@@ -47,6 +48,7 @@ ENV PYTHONUNBUFFERED=1
 LABEL org.opencontainers.image.source="https://github.com/cheolwanpark/claude-agent-toolkit"
 LABEL org.opencontainers.image.description="Claude Agent Toolkit runtime environment"
 LABEL org.opencontainers.image.platform="${TARGETPLATFORM}"
+LABEL org.opencontainers.image.version="${VERSION}"
 
 # Default command
 CMD ["python", "/app/entrypoint.py"]
