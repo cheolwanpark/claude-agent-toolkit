@@ -20,6 +20,7 @@ async def main():
     oauth_token = os.environ.get('CLAUDE_CODE_OAUTH_TOKEN', '')
     system_prompt = os.environ.get('AGENT_SYSTEM_PROMPT')
     verbose = os.environ.get('AGENT_VERBOSE', '0') == '1'
+    model = os.environ.get('ANTHROPIC_MODEL', 'sonnet')
     
     if not prompt:
         print(json.dumps({
@@ -74,6 +75,7 @@ async def main():
     # Setup Claude Code options with proper MCP configuration
     print(f"[entrypoint] MCP servers config: {json.dumps(mcp_servers, indent=2)}", flush=True)
     print(f"[entrypoint] Tool URLs: {json.dumps(tool_urls, indent=2)}", flush=True)
+    print(f"[entrypoint] Using model: {model}", flush=True)
     
     options = ClaudeCodeOptions(
         permission_mode="bypassPermissions",

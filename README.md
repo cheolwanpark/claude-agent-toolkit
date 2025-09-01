@@ -128,6 +128,56 @@ except ExecutionError as e:
     # Handle agent execution or tool failures
 ```
 
+## Model Selection
+
+Choose the right Claude model for your agent's needs:
+
+### Available Models
+- **"haiku"** - Fast and efficient for simple tasks
+- **"sonnet"** - Balanced performance (good default choice)
+- **"opus"** - Most capable for complex reasoning
+
+### Usage Examples
+
+```python
+from claude_agent_toolkit import Agent
+
+# Use fast Haiku model for simple tasks
+weather_agent = Agent(
+    system_prompt="You are a weather assistant",
+    tools=[weather_tool],
+    model="haiku"  # Fast, efficient for simple weather queries
+)
+
+# Use Sonnet for general-purpose tasks
+general_agent = Agent(
+    system_prompt="You are a helpful assistant", 
+    tools=[calculator_tool, weather_tool],
+    model="sonnet"  # Balanced performance
+)
+
+# Use Opus for complex analysis
+analysis_agent = Agent(
+    system_prompt="You are a data analyst",
+    tools=[analysis_tool],
+    model="opus"  # Maximum reasoning capability
+)
+
+# Override model for specific queries
+result = await weather_agent.run(
+    "Complex weather pattern analysis for next month",
+    model="opus"  # Use more capable model for this specific task
+)
+
+# Full model IDs also work
+agent = Agent(model="claude-3-5-haiku-20241022")
+```
+
+### When to Use Each Model
+- **Haiku**: Simple queries, basic operations, fast responses needed
+- **Sonnet**: General purpose tasks, good balance of speed and capability
+- **Opus**: Complex reasoning, detailed analysis, maximum quality needed
+
 ## Why Claude Code Agents?
 
 Unlike generic agent frameworks, this toolkit specifically leverages Claude Code's unique capabilities:
@@ -156,13 +206,15 @@ class Agent:
         self,
         oauth_token: Optional[str] = None,                 # Your Claude Code token
         system_prompt: Optional[str] = None,               # Custom agent behavior
-        tools: Optional[List[BaseTool]] = None             # Tools to connect automatically
+        tools: Optional[List[BaseTool]] = None,            # Tools to connect automatically
+        model: Optional[Union[Literal["opus", "sonnet", "haiku"], str]] = None  # Model selection
     )
     def connect(self, tool: BaseTool) -> 'Agent'           # Connect custom tools  
     async def run(                                         # Run Claude Code with tools
         self,
         prompt: str,                                       # Instruction for Claude
-        verbose: bool = False                              # Show detailed processing logs
+        verbose: bool = False,                             # Show detailed processing logs
+        model: Optional[Union[Literal["opus", "sonnet", "haiku"], str]] = None  # Override model
     ) -> Dict[str, Any]
 ```
 

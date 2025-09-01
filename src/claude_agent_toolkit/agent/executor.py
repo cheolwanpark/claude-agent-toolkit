@@ -28,7 +28,7 @@ class ContainerExecutor:
         self.docker_client = docker_client
         self.image_name = image_name
     
-    def execute(self, prompt: str, oauth_token: str, tool_urls: Dict[str, str], system_prompt: Optional[str] = None, verbose: bool = False) -> Dict[str, Any]:
+    def execute(self, prompt: str, oauth_token: str, tool_urls: Dict[str, str], system_prompt: Optional[str] = None, verbose: bool = False, model: Optional[str] = None) -> Dict[str, Any]:
         """
         Execute prompt in Docker container with connected tools.
         
@@ -38,6 +38,7 @@ class ContainerExecutor:
             tool_urls: Dictionary of tool_name -> url mappings
             system_prompt: Optional system prompt to customize agent behavior
             verbose: If True, enable verbose output in container
+            model: Optional model to use for this execution
             
         Returns:
             Dict with success status, response, and metadata
@@ -54,6 +55,10 @@ class ContainerExecutor:
         # Add system prompt if provided
         if system_prompt:
             environment['AGENT_SYSTEM_PROMPT'] = system_prompt
+        
+        # Add model if provided
+        if model:
+            environment['ANTHROPIC_MODEL'] = model
         
         # Add all connected tools as separate environment variables
         if tool_urls:

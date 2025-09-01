@@ -38,7 +38,8 @@ async def run_weather_demo():
         # Create agent with new pattern (system prompt + tools)
         agent = Agent(
             system_prompt=WEATHER_SYSTEM_PROMPT,
-            tools=[weather_tool]
+            tools=[weather_tool],
+            model="haiku"  # Use fast Haiku model for weather queries
         )
         
         # NOTE: The old pattern still works:
@@ -166,7 +167,8 @@ async def run_interactive_mode():
         # Create agent with system prompt for interactive mode
         agent = Agent(
             system_prompt=WEATHER_SYSTEM_PROMPT,
-            tools=[weather_tool]
+            tools=[weather_tool],
+            model="haiku"  # Use fast Haiku model for interactive weather queries
         )
         
         print(f"\n🤖 Weather assistant is ready! Type 'quit' to exit.")

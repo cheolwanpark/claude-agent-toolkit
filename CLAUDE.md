@@ -238,7 +238,8 @@ async def main():
     agent = Agent(
         oauth_token="your-token",  # Or use CLAUDE_CODE_OAUTH_TOKEN env var
         system_prompt="You are a data processing assistant specialized in mathematical operations.",
-        tools=[AdvancedTool()]  # Auto-connect tools during initialization
+        tools=[AdvancedTool()],  # Auto-connect tools during initialization
+        model="haiku"  # Use fast Haiku model for simple tasks
     )
     
     # Alternative: Connect tools after initialization
@@ -250,7 +251,8 @@ async def main():
     # Execute with detailed response
     result = await agent.run(
         prompt="Calculate factorial of 5 and get weather for San Francisco",
-        verbose=True  # Detailed execution logs
+        verbose=True,  # Detailed execution logs
+        model="opus"  # Override to use Opus model for complex calculation
     )
     
     print(f"Success: {result['success']}")
@@ -295,6 +297,58 @@ class StatefulTool(BaseTool):
         })
         return {"item_count": len(self.state["items"])}
 ```
+
+## Model Selection
+
+Claude Agent Toolkit supports flexible model selection, allowing you to choose the best Claude model for your specific use case:
+
+### Available Models
+- **"haiku"** - Fast and efficient for simple tasks, low cost
+- **"sonnet"** - Balanced performance and capability  
+- **"opus"** - Most capable model for complex reasoning
+
+### Usage Examples
+
+#### Set Default Model
+```python
+from claude_agent_toolkit import Agent
+
+# Use Haiku for simple, fast operations
+weather_agent = Agent(
+    system_prompt="You are a weather assistant",
+    tools=[weather_tool],
+    model="haiku"
+)
+
+# Use Opus for complex analysis
+analysis_agent = Agent(
+    system_prompt="You are a data analyst",
+    tools=[analysis_tool], 
+    model="opus"
+)
+```
+
+#### Override Model Per Run
+```python
+# Start with default model
+agent = Agent(model="sonnet")
+
+# Use different models for specific tasks
+simple_result = await agent.run("What's 2+2?", model="haiku")
+complex_result = await agent.run("Analyze this dataset", model="opus")
+```
+
+#### Full Model IDs
+```python
+# You can also use specific model IDs
+agent = Agent(model="claude-3-5-haiku-20241022")
+agent = Agent(model="claude-opus-4-1-20250805")
+```
+
+### Model Selection Guidelines
+- **Haiku**: Simple queries, basic calculations, fast responses needed
+- **Sonnet**: General purpose, balanced tasks, good default choice
+- **Opus**: Complex reasoning, detailed analysis, maximum capability needed
 
 ### Error Handling and Exception Management
 
@@ -399,7 +453,8 @@ class Agent:
         self,
         oauth_token: Optional[str] = None,
         system_prompt: Optional[str] = None,
-        tools: Optional[List[Any]] = None
+        tools: Optional[List[Any]] = None,
+        model: Optional[Union[Literal["opus", "sonnet", "haiku"], str]] = None
     )
 ```
 
@@ -407,10 +462,11 @@ class Agent:
 - `oauth_token`: Claude Code OAuth token (or use `CLAUDE_CODE_OAUTH_TOKEN` env var)
 - `system_prompt`: Custom system prompt to modify agent behavior
 - `tools`: List of tool instances to connect automatically
+- `model`: Model to use ("opus", "sonnet", "haiku", or any Claude model name/ID)
 
 **Methods:**
 - `connect(tool: BaseTool)`: Connect a tool instance to the agent
-- `async run(prompt: str, verbose: bool = False) -> Dict[str, Any]`: Execute agent with given prompt
+- `async run(prompt: str, verbose: bool = False, model: Optional[Union[Literal["opus", "sonnet", "haiku"], str]] = None) -> Dict[str, Any]`: Execute agent with given prompt
 
 **Return Format:**
 ```python
