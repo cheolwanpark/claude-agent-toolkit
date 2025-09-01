@@ -5,6 +5,9 @@ from typing import Any, Optional
 
 from .server import MCPServer
 from .state_manager import StateManager
+from ..logging import get_logger
+
+logger = get_logger('tool')
 
 
 class BaseTool:
@@ -89,7 +92,7 @@ class BaseTool:
             self._server.worker_manager.max_workers = max(1, int(workers))
         
         self._host, self._port = self._server.start(host, port)
-        print(f"[tool] {self.__class__.__name__} @ {self.connection_url}", flush=True)
+        logger.info("%s @ %s", self.__class__.__name__, self.connection_url)
         return self
     
     def cleanup(self):

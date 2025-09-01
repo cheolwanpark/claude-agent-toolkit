@@ -5,6 +5,9 @@ import docker
 from docker.errors import ImageNotFound
 
 from ..constants import DOCKER_HUB_IMAGE
+from ..logging import get_logger
+
+logger = get_logger('agent')
 
 
 class DockerManager:
@@ -27,16 +30,16 @@ class DockerManager:
         """Ensure Docker image is available by pulling from Docker Hub."""
         try:
             self.client.images.get(self.IMAGE_NAME)
-            print(f"[agent] Using existing image: {self.IMAGE_NAME}")
+            logger.debug("Using existing image: %s", self.IMAGE_NAME)
             return
         except ImageNotFound:
             pass
         
         # Pull from Docker Hub
         try:
-            print(f"[agent] Pulling image from Docker Hub: {self.IMAGE_NAME}")
+            logger.info("Pulling image from Docker Hub: %s", self.IMAGE_NAME)
             self.client.images.pull(self.IMAGE_NAME)
-            print(f"[agent] Successfully pulled {self.IMAGE_NAME}")
+            logger.info("Successfully pulled %s", self.IMAGE_NAME)
         except Exception as e:
             raise RuntimeError(
                 f"Failed to pull Docker image {self.IMAGE_NAME} from Docker Hub.\n"

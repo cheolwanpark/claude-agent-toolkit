@@ -6,6 +6,7 @@ Claude Code agents with custom MCP tools.
 
 from .agent import Agent
 from .tool import BaseTool, tool
+from .logging import set_logging, LogLevel
 
 __version__ = "0.1.2"
-__all__ = ["Agent", "BaseTool", "tool"]
+__all__ = ["Agent", "BaseTool", "tool", "set_logging", "LogLevel"]

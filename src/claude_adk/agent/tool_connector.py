@@ -3,6 +3,10 @@
 
 from typing import Any, Dict
 
+from ..logging import get_logger
+
+logger = get_logger('agent')
+
 
 class ToolConnector:
     """Manages tool connections and URL mappings for Docker container access."""
@@ -36,7 +40,7 @@ class ToolConnector:
         url = url.replace('127.0.0.1', 'host.docker.internal')
         
         self.tool_urls[tool_name] = url
-        print(f"[agent] Connected to {tool_name} at {url}")
+        logger.info("Connected to %s at %s", tool_name, url)
         
         return tool_name
     

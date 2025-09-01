@@ -401,6 +401,52 @@ class StateManager:
     def clone_state() -> Dict[str, Any]
 ```
 
+### Logging Functions (`claude_adk.logging`)
+
+```python
+from claude_adk import set_logging, LogLevel
+
+def set_logging(
+    level: Union[LogLevel, str] = LogLevel.WARNING,
+    format: Optional[str] = None,
+    stream: TextIO = sys.stderr,
+    show_time: bool = False,
+    show_level: bool = False
+) -> None
+```
+
+**Parameters:**
+- `level`: Log level (LogLevel enum or string: 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL')
+- `format`: Custom format string (overrides show_* options)
+- `stream`: Output stream (sys.stdout or sys.stderr)
+- `show_time`: Add timestamp to log messages
+- `show_level`: Add log level to log messages
+
+**LogLevel Enum:**
+```python
+class LogLevel(str, Enum):
+    DEBUG = 'DEBUG'
+    INFO = 'INFO'
+    WARNING = 'WARNING'     # Default level
+    ERROR = 'ERROR'
+    CRITICAL = 'CRITICAL'
+```
+
+**Usage Examples:**
+```python
+# Enable INFO logging for development
+set_logging(LogLevel.INFO)
+
+# Debug mode with full details
+set_logging(LogLevel.DEBUG, show_time=True, show_level=True)
+
+# Production logging to stdout
+set_logging(LogLevel.ERROR, stream=sys.stdout)
+
+# Custom format
+set_logging(format='%(asctime)s - %(name)s - %(message)s')
+```
+
 ## Troubleshooting Guide
 
 ### Common Issues
@@ -447,15 +493,47 @@ async def long_running_task(self):
     pass
 ```
 
+#### 6. Logging Configuration Issues
+```python
+# Issue: Library is too verbose
+from claude_adk import set_logging, LogLevel
+set_logging(LogLevel.ERROR)  # Only show errors
+
+# Issue: No logging output visible
+set_logging(LogLevel.INFO)   # Enable info messages
+
+# Issue: Need debugging information
+set_logging(LogLevel.DEBUG, show_time=True, show_level=True)
+
+# Issue: Want logs in files (use standard Python logging)
+import logging
+set_logging(LogLevel.INFO)
+# Add file handler to root claude_adk logger
+claude_logger = logging.getLogger('claude_adk')
+file_handler = logging.FileHandler('agent.log')
+claude_logger.addHandler(file_handler)
+```
+
 ### Debug Mode
 ```python
-# Enable verbose logging
+from claude_adk import Agent, set_logging, LogLevel
+
+# Enable debug logging to see detailed framework operations
+set_logging(LogLevel.DEBUG, show_time=True, show_level=True)
+
+# Enable verbose agent execution
 result = await agent.run("your prompt", verbose=True)
 
 # Check tool server health
 tool = MyTool()
 tool.run()  # Start server
 # Visit http://localhost:{port}/health in browser
+
+# Example debug output:
+# 2025-01-15 10:30:45,123 INFO     [claude_adk.agent] Running with prompt: Calculate...
+# 2025-01-15 10:30:45,124 INFO     [claude_adk.agent] Connected tools: ['CalculatorTool']
+# 2025-01-15 10:30:45,125 DEBUG    [claude_adk.agent] Starting container agent-abc12345
+# 2025-01-15 10:30:45,200 INFO     [claude_adk.tool] CalculatorTool @ http://127.0.0.1:50123/mcp
 ```
 
 ## Performance Optimization
@@ -522,26 +600,60 @@ pip install claude-adk
 uv add claude-adk
 ```
 
-### Monitoring and Logging
+### Logging Configuration
+
+Claude-ADK includes a built-in logging system that follows Python library best practices. By default, the library stays quiet (WARNING level only), but you can configure it for development and production needs.
+
 ```python
-import logging
+from claude_adk import Agent, set_logging, LogLevel
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Default: Library stays quiet (WARNING level, stderr)
+agent = Agent()
 
-# Monitor tool performance
+# Enable INFO level logging for development
+set_logging(LogLevel.INFO)
+
+# Debug mode with timestamps
+set_logging(LogLevel.DEBUG, show_time=True, show_level=True)
+
+# Production logging to stdout
+set_logging(LogLevel.WARNING, stream=sys.stdout)
+
+# Custom format
+set_logging(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+```
+
+**Available Log Levels:**
+- `LogLevel.DEBUG`: Detailed diagnostic information
+- `LogLevel.INFO`: General operational messages
+- `LogLevel.WARNING`: Warning messages (default)
+- `LogLevel.ERROR`: Error messages
+- `LogLevel.CRITICAL`: Critical system failures
+
+**Logging Components:**
+- `claude_adk.agent`: Agent orchestration, Docker operations, tool connections
+- `claude_adk.tool`: Tool server startup, state management
+
+### Monitoring and Performance
+```python
+from claude_adk import BaseTool, tool, set_logging, LogLevel
+import time
+
+# Enable detailed logging for monitoring
+set_logging(LogLevel.INFO, show_time=True)
+
 class MonitoredTool(BaseTool):
-    @tool(description="Monitored operation")
+    @tool(description="Monitored operation with logging")
     async def operation(self, data: str) -> Dict[str, Any]:
         start_time = time.time()
         try:
             result = await self.process_data(data)
             execution_time = time.time() - start_time
-            logging.info(f"Operation completed in {execution_time:.2f}s")
-            return result
+            # Use tool's built-in logger (automatically available)
+            return {"result": result, "execution_time": execution_time}
         except Exception as e:
-            logging.error(f"Operation failed: {e}")
-            raise
+            # Errors are automatically logged by the framework
+            return {"success": False, "error": str(e)}
 ```
 
 ### Scaling Considerations

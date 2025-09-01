@@ -7,6 +7,10 @@ from typing import Any, Dict, Optional
 
 import docker
 
+from ..logging import get_logger
+
+logger = get_logger('agent')
+
 
 class ContainerExecutor:
     """Handles Docker container execution and result parsing."""
@@ -36,7 +40,7 @@ class ContainerExecutor:
         Returns:
             Dict with success status, response, and metadata
         """
-        print(f"[agent] Running with prompt: {prompt[:100]}...")
+        logger.info("Running with prompt: %s...", prompt[:100])
         
         # Prepare environment variables
         environment = {
@@ -53,13 +57,13 @@ class ContainerExecutor:
         if tool_urls:
             # Pass tools as JSON for easier parsing in entrypoint
             environment['MCP_TOOLS'] = json.dumps(tool_urls)
-            print(f"[agent] Connected tools: {list(tool_urls.keys())}")
+            logger.info("Connected tools: %s", list(tool_urls.keys()))
         
         try:
             # Run container with entrypoint.py
             container_name = f"agent-{uuid.uuid4().hex[:8]}"
             
-            print(f"[agent] Starting container {container_name}")
+            logger.debug("Starting container %s", container_name)
             
             result = self.docker_client.containers.run(
                 image=self.image_name,
@@ -80,7 +84,7 @@ class ContainerExecutor:
             return self._parse_container_output(output)
                 
         except Exception as e:
-            print(f"[agent] Execution failed: {e}")
+            logger.error("Execution failed: %s", e)
             return {
                 "success": False,
                 "response": f"Agent execution failed: {str(e)}",
@@ -109,10 +113,10 @@ class ContainerExecutor:
                     continue
         
         if json_output:
-            print(f"[agent] Execution completed successfully")
+            logger.info("Execution completed successfully")
             return json_output
         else:
-            print(f"[agent] No valid JSON output found")
+            logger.warning("No valid JSON output found")
             return {
                 "success": False,
                 "response": output or "No output from agent",
