@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Claude-ADK is a production-ready Python framework for building sophisticated Claude Code agents with custom MCP tools. This framework provides a Docker-isolated environment where Claude Code can orchestrate stateful, parallel-processing tools for enterprise workflows, leveraging your Claude Code subscription token.
+Claude Agent Toolkit is a production-ready Python framework for building sophisticated Claude Code agents with custom MCP tools. This framework provides a Docker-isolated environment where Claude Code can orchestrate stateful, parallel-processing tools for enterprise workflows, leveraging your Claude Code subscription token.
 
 ### Key Features
 - **Production-Ready Architecture**: Enterprise-grade agent framework with proper state management
@@ -17,7 +17,7 @@ Claude-ADK is a production-ready Python framework for building sophisticated Cla
 ## Architecture
 
 ### System Overview
-Claude-ADK implements a distributed architecture where custom MCP tools run as HTTP servers on the host machine, while Claude Code executes in an isolated Docker container that can communicate with these tools.
+Claude Agent Toolkit implements a distributed architecture where custom MCP tools run as HTTP servers on the host machine, while Claude Code executes in an isolated Docker container that can communicate with these tools.
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────────┐
@@ -32,13 +32,13 @@ Claude-ADK implements a distributed architecture where custom MCP tools run as H
 
 ### Core Components
 
-#### Agent Framework (`src/claude_adk/agent/`)
+#### Agent Framework (`src/claude_agent_toolkit/agent/`)
 - **Agent** (`core.py`): Main orchestrator class managing the entire agent lifecycle
 - **DockerManager** (`docker_manager.py`): Manages Docker images and container lifecycle
 - **ContainerExecutor** (`executor.py`): Executes Claude Code commands in isolated containers
 - **ToolConnector** (`tool_connector.py`): Manages connections and URLs for MCP tool servers
 
-#### MCP Tool Framework (`src/claude_adk/tool/`)
+#### MCP Tool Framework (`src/claude_agent_toolkit/tool/`)
 - **BaseTool** (`base.py`): Abstract base class for all custom tools with state management
 - **@tool decorator** (`decorator.py`): Method decorator that registers MCP tools with rich configuration
 - **MCPServer** (`server.py`): HTTP server implementation using FastMCP with automatic port selection
@@ -46,7 +46,7 @@ Claude-ADK implements a distributed architecture where custom MCP tools run as H
 - **WorkerManager** (`worker.py`): Process pool for CPU-bound operations with state snapshots
 
 #### Docker Environment
-- **Pre-built Image**: `cheolwanpark/claude-adk:latest` - Production Docker image with Claude Code CLI
+- **Pre-built Image**: `cheolwanpark/claude-agent-toolkit:latest` - Production Docker image with Claude Code CLI
 - **Host Networking**: Container uses host network to access MCP tool servers
 - **Entrypoint** (`src/docker/entrypoint.py`): Container initialization and MCP client configuration
 
@@ -136,7 +136,7 @@ uv lock --upgrade
 
 ### Tool Creation with State Management
 ```python
-from claude_adk import BaseTool, tool
+from claude_agent_toolkit import BaseTool, tool
 from typing import List, Dict, Any
 import time
 
@@ -206,7 +206,7 @@ class AdvancedTool(BaseTool):
 
 ### Agent Configuration and Usage
 ```python
-from claude_adk import Agent
+from claude_agent_toolkit import Agent
 import asyncio
 
 async def main():
@@ -307,7 +307,7 @@ The framework focuses on production-ready agent development rather than testing 
 
 ## API Reference
 
-### Agent Class (`claude_adk.agent.Agent`)
+### Agent Class (`claude_agent_toolkit.agent.Agent`)
 
 ```python
 class Agent:
@@ -340,7 +340,7 @@ class Agent:
 }
 ```
 
-### BaseTool Class (`claude_adk.tool.BaseTool`)
+### BaseTool Class (`claude_agent_toolkit.tool.BaseTool`)
 
 ```python
 class BaseTool:
@@ -357,7 +357,7 @@ class BaseTool:
 - `run()`: Start the MCP server (called automatically)
 - `cleanup()`: Stop server and cleanup resources
 
-### @tool Decorator (`claude_adk.tool.tool`)
+### @tool Decorator (`claude_agent_toolkit.tool.tool`)
 
 ```python
 def tool(
@@ -385,7 +385,7 @@ def tool(
 - `backoff_initial_ms`: Initial backoff delay
 - `backoff_max_ms`: Maximum backoff delay
 
-### StateManager Class (`claude_adk.tool.StateManager`)
+### StateManager Class (`claude_agent_toolkit.tool.StateManager`)
 
 ```python
 class StateManager:
@@ -401,10 +401,10 @@ class StateManager:
     def clone_state() -> Dict[str, Any]
 ```
 
-### Logging Functions (`claude_adk.logging`)
+### Logging Functions (`claude_agent_toolkit.logging`)
 
 ```python
-from claude_adk import set_logging, LogLevel
+from claude_agent_toolkit import set_logging, LogLevel
 
 def set_logging(
     level: Union[LogLevel, str] = LogLevel.WARNING,
@@ -496,7 +496,7 @@ async def long_running_task(self):
 #### 6. Logging Configuration Issues
 ```python
 # Issue: Library is too verbose
-from claude_adk import set_logging, LogLevel
+from claude_agent_toolkit import set_logging, LogLevel
 set_logging(LogLevel.ERROR)  # Only show errors
 
 # Issue: No logging output visible
@@ -508,15 +508,15 @@ set_logging(LogLevel.DEBUG, show_time=True, show_level=True)
 # Issue: Want logs in files (use standard Python logging)
 import logging
 set_logging(LogLevel.INFO)
-# Add file handler to root claude_adk logger
-claude_logger = logging.getLogger('claude_adk')
+# Add file handler to root claude_agent_toolkit logger
+claude_logger = logging.getLogger('claude_agent_toolkit')
 file_handler = logging.FileHandler('agent.log')
 claude_logger.addHandler(file_handler)
 ```
 
 ### Debug Mode
 ```python
-from claude_adk import Agent, set_logging, LogLevel
+from claude_agent_toolkit import Agent, set_logging, LogLevel
 
 # Enable debug logging to see detailed framework operations
 set_logging(LogLevel.DEBUG, show_time=True, show_level=True)
@@ -530,10 +530,10 @@ tool.run()  # Start server
 # Visit http://localhost:{port}/health in browser
 
 # Example debug output:
-# 2025-01-15 10:30:45,123 INFO     [claude_adk.agent] Running with prompt: Calculate...
-# 2025-01-15 10:30:45,124 INFO     [claude_adk.agent] Connected tools: ['CalculatorTool']
-# 2025-01-15 10:30:45,125 DEBUG    [claude_adk.agent] Starting container agent-abc12345
-# 2025-01-15 10:30:45,200 INFO     [claude_adk.tool] CalculatorTool @ http://127.0.0.1:50123/mcp
+# 2025-01-15 10:30:45,123 INFO     [claude_agent_toolkit.agent] Running with prompt: Calculate...
+# 2025-01-15 10:30:45,124 INFO     [claude_agent_toolkit.agent] Connected tools: ['CalculatorTool']
+# 2025-01-15 10:30:45,125 DEBUG    [claude_agent_toolkit.agent] Starting container agent-abc12345
+# 2025-01-15 10:30:45,200 INFO     [claude_agent_toolkit.tool] CalculatorTool @ http://127.0.0.1:50123/mcp
 ```
 
 ## Performance Optimization
@@ -549,7 +549,7 @@ tool.run()  # Start server
 - Consider using `conflict_policy="error"` for critical operations
 
 ### 3. Docker Optimization
-- Pre-pull the Docker image: `docker pull cheolwanpark/claude-adk:latest`
+- Pre-pull the Docker image: `docker pull cheolwanpark/claude-agent-toolkit:latest`
 - Use Docker's host networking mode (done automatically)
 - Monitor container resource usage in production
 
@@ -594,18 +594,18 @@ export CLAUDE_CODE_OAUTH_TOKEN='prod-token'
 export DOCKER_HOST='unix:///var/run/docker.sock'
 
 # Install in production
-pip install claude-adk
+pip install claude-agent-toolkit
 
 # Or using uv for faster installs
-uv add claude-adk
+uv add claude-agent-toolkit
 ```
 
 ### Logging Configuration
 
-Claude-ADK includes a built-in logging system that follows Python library best practices. By default, the library stays quiet (WARNING level only), but you can configure it for development and production needs.
+Claude Agent Toolkit includes a built-in logging system that follows Python library best practices. By default, the library stays quiet (WARNING level only), but you can configure it for development and production needs.
 
 ```python
-from claude_adk import Agent, set_logging, LogLevel
+from claude_agent_toolkit import Agent, set_logging, LogLevel
 
 # Default: Library stays quiet (WARNING level, stderr)
 agent = Agent()
@@ -631,12 +631,12 @@ set_logging(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 - `LogLevel.CRITICAL`: Critical system failures
 
 **Logging Components:**
-- `claude_adk.agent`: Agent orchestration, Docker operations, tool connections
-- `claude_adk.tool`: Tool server startup, state management
+- `claude_agent_toolkit.agent`: Agent orchestration, Docker operations, tool connections
+- `claude_agent_toolkit.tool`: Tool server startup, state management
 
 ### Monitoring and Performance
 ```python
-from claude_adk import BaseTool, tool, set_logging, LogLevel
+from claude_agent_toolkit import BaseTool, tool, set_logging, LogLevel
 import time
 
 # Enable detailed logging for monitoring

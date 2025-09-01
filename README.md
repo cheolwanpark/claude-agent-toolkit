@@ -1,4 +1,4 @@
-# Claude Code Agent Development Kit (claude-adk)
+# Claude Code Agent Toolkit (claude-agent-toolkit)
 
 A Python framework for building Claude Code agents with custom tools, designed to leverage Claude Code's advanced reasoning capabilities with your subscription token. The framework provides Docker-isolated environments where Claude Code can orchestrate custom MCP tools for production workflows.
 
@@ -15,8 +15,8 @@ A Python framework for building Claude Code agents with custom tools, designed t
 
 ### Core Components
 
-- **Agent Framework** (`src/claude_adk/agent/`) - Docker-isolated Agent class that runs Claude Code with MCP tool support
-- **MCP Tool Framework** (`src/claude_adk/tool/`) - BaseTool class for creating custom MCP tools with state management
+- **Agent Framework** (`src/claude_agent_toolkit/agent/`) - Docker-isolated Agent class that runs Claude Code with MCP tool support
+- **MCP Tool Framework** (`src/claude_agent_toolkit/tool/`) - BaseTool class for creating custom MCP tools with state management
 - **Example Tools** (`src/examples/`) - Demonstration tools showing practical agent development patterns
 - **Docker Environment** (`src/docker/`) - Isolated environment with Claude Code CLI and dependencies
 
@@ -32,13 +32,13 @@ A Python framework for building Claude Code agents with custom tools, designed t
 
 ```bash
 # Using pip
-pip install claude-adk
+pip install claude-agent-toolkit
 
 # Using uv
-uv add claude-adk
+uv add claude-agent-toolkit
 
 # Using poetry
-poetry add claude-adk
+poetry add claude-agent-toolkit
 
 # Set your OAuth token
 export CLAUDE_CODE_OAUTH_TOKEN='your-token-here'
@@ -48,8 +48,8 @@ export CLAUDE_CODE_OAUTH_TOKEN='your-token-here'
 
 ```bash
 # Clone the repository for examples
-git clone https://github.com/cheolwanpark/claude-adk.git
-cd claude-adk
+git clone https://github.com/cheolwanpark/claude-agent-toolkit.git
+cd claude-agent-toolkit
 
 # Start Docker Desktop first, then run the verification demo
 # Run calculator example:
@@ -69,7 +69,7 @@ This will run demonstration examples:
 Create tools by inheriting from `BaseTool` and using the `@tool()` decorator:
 
 ```python
-from claude_adk import BaseTool, tool
+from claude_agent_toolkit import BaseTool, tool
 
 class MyTool(BaseTool):
     def __init__(self):
@@ -92,7 +92,7 @@ class MyTool(BaseTool):
 ### Using Tools with Agents
 
 ```python
-from claude_adk import Agent
+from claude_agent_toolkit import Agent
 
 # Create and start tool
 my_tool = MyTool().run(workers=2)

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-# weather/main.py - Weather demo using Claude ADK Agent
+# weather/main.py - Weather demo using Claude Agent Toolkit
 
 import asyncio
 import os
 import sys
 
-# Import from claude-adk package
-from claude_adk import Agent
+# Import from claude-agent-toolkit package
+from claude_agent_toolkit import Agent
 
 # Import our weather tool and prompts
 from tool import WeatherTool
@@ -16,7 +16,7 @@ from prompt import WEATHER_SYSTEM_PROMPT, WELCOME_MESSAGE
 async def run_weather_demo():
     """Run the weather demo with interactive examples."""
     print("\n" + "="*60)
-    print("CLAUDE ADK WEATHER DEMO")
+    print("CLAUDE AGENT TOOLKIT WEATHER DEMO")
     print("="*60)
     print("\nThis demo showcases:")
     print("1. Real-time weather API integration (wttr.in)")

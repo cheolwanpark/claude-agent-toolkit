@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "claude-adk"
+name = "claude-agent-toolkit"
 version = "0.1.2"
 description = "Python framework for building Claude Code agents with custom tools"
 readme = "README.md"
@@ -20,7 +20,7 @@ keywords = [
     "claude-agents",
     "mcp-tools",
     "ai-agents",
-    "claude-adk",
+    "claude-agent-toolkit",
     "agent-framework",
     "docker",
     "model-context-protocol"
@@ -47,11 +47,11 @@ dependencies = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/cheolwanpark/claude-adk"
-"Repository" = "https://github.com/cheolwanpark/claude-adk.git"
-"Issues" = "https://github.com/cheolwanpark/claude-adk/issues"
-"Changelog" = "https://github.com/cheolwanpark/claude-adk/blob/main/CHANGELOG.md"
-"Documentation" = "https://github.com/cheolwanpark/claude-adk#readme"
+"Homepage" = "https://github.com/cheolwanpark/claude-agent-toolkit"
+"Repository" = "https://github.com/cheolwanpark/claude-agent-toolkit.git"
+"Issues" = "https://github.com/cheolwanpark/claude-agent-toolkit/issues"
+"Changelog" = "https://github.com/cheolwanpark/claude-agent-toolkit/blob/main/CHANGELOG.md"
+"Documentation" = "https://github.com/cheolwanpark/claude-agent-toolkit#readme"
 "Claude Code" = "https://claude.ai/code"
 
 [project.optional-dependencies]
@@ -85,7 +85,7 @@ build = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/claude_adk"]
+packages = ["src/claude_agent_toolkit"]
 
 [tool.hatch.build.targets.sdist]
 include = [

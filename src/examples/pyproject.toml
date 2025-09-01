@@ -1,19 +1,19 @@
 [project]
 name = "examples"
 version = "0.1.0"
-description = "Claude ADK Examples - Practical demos of the Claude Code Agent Development Kit"
+description = "Claude Agent Toolkit Examples - Practical demos of the Claude Code Agent Toolkit"
 readme = "README.md"
 authors = [
     { name = "Cheolwan Park", email = "cheolwan.park552@gmail.com" }
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "claude-adk",
+    "claude-agent-toolkit",
     "httpx>=0.28.1",
 ]
 
 [tool.uv.sources]
-claude-adk = { workspace = true }
+claude-agent-toolkit = { workspace = true }
 
 [tool.hatch.build.targets.wheel]
 only-include = ["README.md"]

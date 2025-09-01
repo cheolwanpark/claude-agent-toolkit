@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# logging.py - Logging module for claude-adk library
+# logging.py - Logging module for claude-agent-toolkit library
 
 import logging
 import sys
@@ -8,7 +8,7 @@ from typing import Optional, TextIO, Union
 
 
 class LogLevel(str, Enum):
-    """Logging level options for claude-adk."""
+    """Logging level options for claude-agent-toolkit."""
     DEBUG = 'DEBUG'
     INFO = 'INFO'
     WARNING = 'WARNING'
@@ -17,7 +17,7 @@ class LogLevel(str, Enum):
 
 
 # Library root logger with NullHandler (Python library best practice)
-_root_logger = logging.getLogger('claude_adk')
+_root_logger = logging.getLogger('claude_agent_toolkit')
 _root_logger.addHandler(logging.NullHandler())
 _root_logger.setLevel(logging.DEBUG)
 
@@ -34,8 +34,8 @@ def get_logger(name: str) -> logging.Logger:
     Returns:
         Logger instance with proper hierarchy
     """
-    # Simple flat naming: claude_adk.agent, claude_adk.tool
-    return logging.getLogger(f'claude_adk.{name}')
+    # Simple flat naming: claude_agent_toolkit.agent, claude_agent_toolkit.tool
+    return logging.getLogger(f'claude_agent_toolkit.{name}')
 
 
 def set_logging(
@@ -45,10 +45,10 @@ def set_logging(
     show_time: bool = False,
     show_level: bool = False
 ) -> None:
-    """Configure logging output for claude-adk.
+    """Configure logging output for claude-agent-toolkit.
     
     By default, the library uses WARNING level and stderr output with format:
-    '[claude_adk.component] message'
+    '[claude_agent_toolkit.component] message'
     
     Args:
         level: Log level (LogLevel enum or string)

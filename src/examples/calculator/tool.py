@@ -5,7 +5,7 @@ import math
 from datetime import datetime
 from typing import Dict, Any, Union
 
-from claude_adk import BaseTool, tool
+from claude_agent_toolkit import BaseTool, tool
 
 
 class CalculatorTool(BaseTool):

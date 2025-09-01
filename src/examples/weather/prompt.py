@@ -64,9 +64,9 @@ Analysis: {analysis}
 Recommendations: {recommendations}"""
 
 # Welcome message for the weather demo
-WELCOME_MESSAGE = """🌤️ Welcome to the Claude ADK Weather Demo!
+WELCOME_MESSAGE = """🌤️ Welcome to the Claude Agent Toolkit Weather Demo!
 
-I'm your weather assistant powered by the Claude ADK framework with real-time weather data from wttr.in. I can help you with:
+I'm your weather assistant powered by the Claude Agent Toolkit framework with real-time weather data from wttr.in. I can help you with:
 
 ☀️ **Current Conditions**: Get real-time weather for any location worldwide
 🌦️ **Forecasts**: 1-3 day forecasts with hourly details

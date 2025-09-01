@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-# constants.py - Claude ADK constants and configuration
+# constants.py - Claude Agent Toolkit constants and configuration
 
 """
-Constants and configuration values for the Claude Agent Development Kit.
+Constants and configuration values for the Claude Agent Toolkit.
 """
 
 # Docker Hub repository configuration

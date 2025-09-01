@@ -1,6 +1,6 @@
-# Claude Agent Development Kit
+# Claude Agent Toolkit
 """
-Claude Agent Development Kit (claude-adk) - Framework for building and testing
+Claude Agent Toolkit (claude-agent-toolkit) - Framework for building and testing
 Claude Code agents with custom MCP tools.
 """
 

@@ -44,8 +44,8 @@ USER claudeuser
 ENV PYTHONUNBUFFERED=1
 
 # Add metadata
-LABEL org.opencontainers.image.source="https://github.com/cheolwanpark/claude-adk"
-LABEL org.opencontainers.image.description="Claude Agent Development Kit runtime environment"
+LABEL org.opencontainers.image.source="https://github.com/cheolwanpark/claude-agent-toolkit"
+LABEL org.opencontainers.image.description="Claude Agent Toolkit runtime environment"
 LABEL org.opencontainers.image.platform="${TARGETPLATFORM}"
 
 # Default command

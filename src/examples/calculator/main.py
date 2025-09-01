@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-# calculator/main.py - Calculator demo using Claude ADK Agent
+# calculator/main.py - Calculator demo using Claude Agent Toolkit
 
 import asyncio
 import os
 import sys
 
-# Import from claude-adk package
-from claude_adk import Agent
+# Import from claude-agent-toolkit package
+from claude_agent_toolkit import Agent
 
 # Import our calculator tool and prompts
 from tool import CalculatorTool
@@ -16,7 +16,7 @@ from prompt import CALCULATOR_SYSTEM_PROMPT, WELCOME_MESSAGE
 async def run_calculator_demo():
     """Run the calculator demo with interactive examples."""
     print("\n" + "="*60)
-    print("CLAUDE ADK CALCULATOR DEMO")
+    print("CLAUDE AGENT TOOLKIT CALCULATOR DEMO")
     print("="*60)
     print("\nThis demo showcases:")
     print("1. Custom tool implementation (CalculatorTool)")

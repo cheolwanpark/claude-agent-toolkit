@@ -4,7 +4,7 @@ requires-python = ">=3.12"
 
 [manifest]
 members = [
-    "claude-adk",
+    "claude-agent-toolkit",
     "examples",
 ]
 
@@ -206,7 +206,7 @@ wheels = [
 ]
 
 [[package]]
-name = "claude-adk"
+name = "claude-agent-toolkit"
 version = "0.1.2"
 source = { editable = "." }
 dependencies = [
@@ -481,13 +481,13 @@ name = "examples"
 version = "0.1.0"
 source = { editable = "src/examples" }
 dependencies = [
-    { name = "claude-adk" },
+    { name = "claude-agent-toolkit" },
     { name = "httpx" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "claude-adk", editable = "." },
+    { name = "claude-agent-toolkit", editable = "." },
     { name = "httpx", specifier = ">=0.28.1" },
 ]
 

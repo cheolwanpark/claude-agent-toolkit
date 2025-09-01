@@ -52,9 +52,9 @@ Explanation: {explanation}
 Would you like me to show the calculation history or perform any related calculations?"""
 
 # Welcome message for the calculator demo
-WELCOME_MESSAGE = """🧮 Welcome to the Claude ADK Calculator Demo!
+WELCOME_MESSAGE = """🧮 Welcome to the Claude Agent Toolkit Calculator Demo!
 
-I'm a mathematical assistant powered by the Claude ADK framework. I have access to a comprehensive calculator tool that can:
+I'm a mathematical assistant powered by the Claude Agent Toolkit framework. I have access to a comprehensive calculator tool that can:
 
 ✓ Perform basic arithmetic (add, subtract, multiply, divide)
 ✓ Handle advanced operations (power, square root)

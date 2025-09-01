@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 
 import httpx
-from claude_adk import BaseTool, tool
+from claude_agent_toolkit import BaseTool, tool
 from weather import WeatherAPI
 
 
@@ -25,7 +25,7 @@ class WeatherTool(BaseTool):
         self.client = httpx.AsyncClient(
             base_url="https://wttr.in",
             timeout=httpx.Timeout(30.0),
-            headers={'User-Agent': 'Claude-ADK-Weather-Demo/1.0'}
+            headers={'User-Agent': 'Claude-Agent-Toolkit-Weather-Demo/1.0'}
         )
     
     
