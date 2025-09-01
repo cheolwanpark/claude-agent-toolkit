@@ -156,6 +156,53 @@ uv lock --upgrade
 4. **Build Your Agent** - Use examples in `src/examples/` to see demonstrations or create custom agent scripts
 5. **Deploy to Production** - Use your Claude Code subscription to run agents at scale
 
+## Release Process
+
+### Testing Strategy
+Use pre-release tags to test Docker builds before PyPI release:
+```bash
+# Test Docker build with beta tag (PEP 440 compliant)
+git tag v0.1.2b1
+git push origin v0.1.2b1
+# Workflow builds Docker image only (PyPI fails safely)
+
+# After testing, create official release
+git tag v0.1.2
+git push origin v0.1.2
+# Both Docker and PyPI succeed
+```
+
+### PyPI Trusted Publishing
+This project uses GitHub OIDC for secure PyPI publishing:
+- No API tokens stored in GitHub Secrets
+- Automatic authentication via GitHub Actions
+- Configure at: pypi.org → package → Publishing → Add GitHub publisher
+
+#### PyPI Configuration Steps
+1. Go to [PyPI](https://pypi.org) and log in
+2. Navigate to **claude-agent-toolkit** package settings
+3. Go to **Publishing** section
+4. Add GitHub Publisher with these exact values:
+   - **Owner**: cheolwanpark
+   - **Repository**: claude-agent-toolkit
+   - **Workflow name**: release.yml
+   - **Environment name**: (leave blank)
+
+### Release Workflow
+The unified `release.yml` workflow handles:
+1. Python package build and PyPI publishing (via trusted publisher)
+2. Docker multi-platform image build and push
+3. Automatic version extraction and tagging
+
+### Release Commands
+```bash
+# Pre-release testing (PEP 440: a1=alpha, b1=beta, rc1=release candidate)
+git tag v0.1.2b1 && git push origin v0.1.2b1
+
+# Official release
+git tag v0.1.2 && git push origin v0.1.2
+```
+
 ## Advanced Code Patterns
 
 ### Tool Creation with State Management
