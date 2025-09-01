@@ -4,6 +4,7 @@
 from typing import Any, Dict
 
 from ..logging import get_logger
+from ..exceptions import ConfigurationError
 
 logger = get_logger('agent')
 
@@ -26,10 +27,10 @@ class ToolConnector:
             Tool name that was connected
             
         Raises:
-            ValueError: If tool doesn't have connection_url property
+            ConfigurationError: If tool doesn't have connection_url property
         """
         if not hasattr(tool, 'connection_url'):
-            raise ValueError("Tool must have 'connection_url' property")
+            raise ConfigurationError("Tool must have 'connection_url' property")
         
         # Get tool name (class name)
         tool_name = tool.__class__.__name__

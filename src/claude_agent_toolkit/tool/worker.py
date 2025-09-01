@@ -9,6 +9,7 @@ from copy import deepcopy
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from .state_manager import json_roundtrip, make_patch, apply_patch_inplace
+from ..exceptions import ExecutionError, StateError
 
 
 def autopatch_worker(
@@ -76,7 +77,10 @@ class WorkerPoolManager:
             Dictionary with 'patch', 'result', and 'base_version' or error info
         """
         if self.cpu_pool is None:
-            self.cpu_pool = ProcessPoolExecutor(max_workers=self.max_workers)
+            try:
+                self.cpu_pool = ProcessPoolExecutor(max_workers=self.max_workers)
+            except Exception as e:
+                return {"error": f"Failed to create process pool: {e}"}
         if self.semaphore is None:
             self.semaphore = asyncio.Semaphore(self.max_workers)
 
@@ -94,18 +98,24 @@ class WorkerPoolManager:
             attempt = 0
             while True:
                 loop = asyncio.get_running_loop()
-                fut = loop.run_in_executor(
-                    self.cpu_pool,
-                    autopatch_worker,
-                    module, qualname, method_name,
-                    state_snapshot, config_fields,
-                    args, kwargs,
-                    current_version,
-                )
+                try:
+                    fut = loop.run_in_executor(
+                        self.cpu_pool,
+                        autopatch_worker,
+                        module, qualname, method_name,
+                        state_snapshot, config_fields,
+                        args, kwargs,
+                        current_version,
+                    )
+                except Exception as e:
+                    return {"error": f"Failed to submit task to process pool: {e}"}
+                
                 try:
                     out = await asyncio.wait_for(fut, timeout=timeout_s)
                 except asyncio.TimeoutError:
                     return {"error": f"timeout after {timeout_s}s"}
+                except Exception as e:
+                    return {"error": f"Process execution failed: {e}"}
 
                 if out["base_version"] != current_version:
                     # conflict → retry or surface error

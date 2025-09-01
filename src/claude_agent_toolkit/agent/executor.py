@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional
 import docker
 
 from ..logging import get_logger
+from ..exceptions import ExecutionError
 
 logger = get_logger('agent')
 
@@ -83,13 +84,12 @@ class ContainerExecutor:
             # Find JSON in output (it might have other logs)
             return self._parse_container_output(output)
                 
+        except docker.errors.DockerException as e:
+            logger.error("Docker execution failed: %s", e)
+            raise ExecutionError(f"Agent execution failed due to Docker error: {e}") from e
         except Exception as e:
             logger.error("Execution failed: %s", e)
-            return {
-                "success": False,
-                "response": f"Agent execution failed: {str(e)}",
-                "error": str(e)
-            }
+            raise ExecutionError(f"Agent execution failed: {e}") from e
     
     def _parse_container_output(self, output: str) -> Dict[str, Any]:
         """
@@ -117,8 +117,4 @@ class ContainerExecutor:
             return json_output
         else:
             logger.warning("No valid JSON output found")
-            return {
-                "success": False,
-                "response": output or "No output from agent",
-                "error": "Failed to parse agent output"
-            }
+            raise ExecutionError(f"Failed to parse agent output. Raw output: {output or 'No output'}")

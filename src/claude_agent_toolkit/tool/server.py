@@ -14,6 +14,7 @@ from fastmcp.utilities.logging import configure_logging
 
 from .worker import WorkerPoolManager
 from .state_manager import apply_patch_inplace
+from ..exceptions import ConnectionError, StateError, ExecutionError
 
 
 class MCPServer:
@@ -38,11 +39,16 @@ class MCPServer:
     
     def _pick_port(self, host: str) -> int:
         """Pick an available port on the given host."""
-        s = socket.socket()
-        s.bind((host, 0))
-        port = s.getsockname()[1]
-        s.close()
-        return port
+        try:
+            s = socket.socket()
+            s.bind((host, 0))
+            port = s.getsockname()[1]
+            s.close()
+            return port
+        except socket.error as e:
+            raise ConnectionError(f"Failed to bind to host {host}: {e}") from e
+        except Exception as e:
+            raise ConnectionError(f"Socket operation failed: {e}") from e
     
     def _collect_tool_methods(self) -> List[Tuple[Callable, Dict[str, Any]]]:
         """Collect all methods marked with @tool decorator."""
@@ -63,8 +69,8 @@ class MCPServer:
                 if inspect.ismethod(member) and getattr(member, "__mcp_tool__", False):
                     meta = getattr(member, "__mcp_meta__", {})
                     methods.append((member, meta))
-            except Exception:
-                # Skip any other problematic attributes
+            except (AttributeError, TypeError):
+                # Skip attributes that can't be accessed or aren't callable
                 continue
         
         return methods
@@ -90,7 +96,14 @@ class MCPServer:
             )
             
             if "error" in result:
-                return result
+                # Convert error dict to exception
+                error_msg = result["error"]
+                if error_msg == "conflict":
+                    raise StateError(f"State conflict: expected version {result.get('expected')}, got {result.get('actual')}")
+                elif "timeout" in error_msg:
+                    raise ExecutionError(f"Operation timed out: {error_msg}")
+                else:
+                    raise ExecutionError(f"CPU-bound operation failed: {error_msg}")
             
             # Commit patch
             self.tool_instance._state_manager.apply_changes(result["patch"])
@@ -108,7 +121,8 @@ class MCPServer:
         wrapped.__doc__ = method.__doc__
         try:
             wrapped.__annotations__ = method.__func__.__annotations__
-        except Exception:
+        except AttributeError:
+            # Method might not have annotations or __func__ attribute
             pass
 
         mcp.tool(name=meta["name"], description=meta["description"])(wrapped)
@@ -154,7 +168,7 @@ class MCPServer:
             Tuple of (host, port) the server is running on
         """
         if self._server_thread:
-            raise RuntimeError("Server already running")
+            raise StateError("Server already running")
         
         actual_port = port or self._pick_port(host)
         
@@ -179,11 +193,13 @@ class MCPServer:
                 if r.status_code == 200:
                     self._ready = True
                     return
+            except (httpx.RequestError, httpx.TimeoutException) as e:
+                last_err = e
             except Exception as e:
                 last_err = e
             time.sleep(0.1)
         
-        raise TimeoutError(f"MCP server not ready at {health_url} ({last_err})")
+        raise ConnectionError(f"MCP server not ready at {health_url} after {timeout}s (last error: {last_err})")
     
     def cleanup(self):
         """Clean up server resources."""

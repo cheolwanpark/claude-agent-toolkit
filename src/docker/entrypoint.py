@@ -40,7 +40,8 @@ async def main():
     # Parse tools configuration
     try:
         tool_urls = json.loads(tools_json)
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
+        print(f"[entrypoint] Warning: Invalid JSON in MCP_TOOLS: {e}", flush=True)
         tool_urls = {}
     
     # Configure MCP servers using HTTP configuration
@@ -63,6 +64,10 @@ async def main():
                     health_url = tool_url.replace('/mcp', '/health')
                     response = client.get(health_url)
                     print(f"[entrypoint] Health check for {tool_name}: {response.status_code}", flush=True)
+            except httpx.TimeoutException:
+                print(f"[entrypoint] Health check timeout for {tool_name}", flush=True)
+            except httpx.RequestError as e:
+                print(f"[entrypoint] Health check connection error for {tool_name}: {e}", flush=True)
             except Exception as e:
                 print(f"[entrypoint] Health check failed for {tool_name}: {e}", flush=True)
     

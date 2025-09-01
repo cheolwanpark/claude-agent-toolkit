@@ -272,8 +272,17 @@ class StatefulTool(BaseTool):
         return {"item_count": len(self.state["items"])}
 ```
 
-### Error Handling and Debugging
+### Error Handling and Exception Management
+
+Claude Agent Toolkit uses a comprehensive exception hierarchy for clear error handling:
+
 ```python
+from claude_agent_toolkit import (
+    BaseTool, tool, 
+    ClaudeAgentError, ConfigurationError, ConnectionError, 
+    ExecutionError, StateError
+)
+
 class RobustTool(BaseTool):
     @tool(description="Tool with comprehensive error handling")
     async def robust_method(self, data: str) -> Dict[str, Any]:
@@ -283,16 +292,67 @@ class RobustTool(BaseTool):
             return {"success": True, "result": result}
             
         except ValueError as e:
-            # Handle specific exceptions
-            return {"success": False, "error": "validation", "message": str(e)}
+            # Convert domain exceptions to library exceptions
+            raise ExecutionError(f"Data validation failed: {e}") from e
         except Exception as e:
-            # Handle unexpected exceptions
-            return {"success": False, "error": "unexpected", "message": str(e)}
+            # Wrap unexpected exceptions
+            raise ExecutionError(f"Tool execution failed: {e}") from e
     
     def process_data(self, data: str) -> str:
         if not data.strip():
             raise ValueError("Data cannot be empty or whitespace")
         return data.upper()
+
+# Exception Handling Best Practices for Tool Developers:
+class ExceptionAwareTool(BaseTool):
+    def __init__(self):
+        super().__init__()
+        # Invalid configuration should raise ConfigurationError
+        if not self.validate_config():
+            raise ConfigurationError("Tool configuration is invalid")
+    
+    @tool(description="Method that can raise various exceptions")
+    async def complex_method(self, param: str) -> Dict[str, Any]:
+        # Let framework exceptions propagate naturally
+        if not self._port:  # This will raise StateError from BaseTool
+            return self.connection_url
+        
+        # Wrap third-party exceptions appropriately
+        try:
+            import requests
+            response = requests.get(f"https://api.example.com/{param}")
+            response.raise_for_status()
+        except requests.exceptions.ConnectionError as e:
+            raise ConnectionError(f"Failed to connect to external API: {e}") from e
+        except requests.exceptions.RequestException as e:
+            raise ExecutionError(f"API request failed: {e}") from e
+        
+        return {"status": "success"}
+    
+    def validate_config(self) -> bool:
+        # Configuration validation logic
+        return True
+```
+
+### Exception Hierarchy Reference
+
+```python
+ClaudeAgentError                    # Base exception for all library errors
+├── ConfigurationError             # Missing/invalid configuration
+│   ├── Missing OAuth tokens       # Agent initialization failures  
+│   └── Invalid tool configuration # Tool setup errors
+├── ConnectionError                # Network and service connectivity
+│   ├── Docker connection issues   # Docker daemon problems
+│   ├── Socket binding failures    # Port conflicts, network issues
+│   └── Tool server connectivity   # MCP server health failures
+├── ExecutionError                 # Agent and tool execution failures
+│   ├── Tool method failures       # Custom tool errors
+│   ├── CPU-bound timeouts         # Worker process timeouts
+│   └── Agent execution issues     # Claude Code execution problems  
+└── StateError                     # State management and tool lifecycle
+    ├── State conflicts           # JSON patch conflicts
+    ├── Tool lifecycle violations # Accessing tools before .run()
+    └── State serialization       # JSON serialization failures
 ```
 
 ## Claude Code Agent Approach
@@ -401,6 +461,71 @@ class StateManager:
     def clone_state() -> Dict[str, Any]
 ```
 
+### Exception Classes (`claude_agent_toolkit.exceptions`)
+
+Claude Agent Toolkit provides a comprehensive exception hierarchy for clear error handling:
+
+```python
+from claude_agent_toolkit import (
+    ClaudeAgentError, ConfigurationError, ConnectionError,
+    ExecutionError, StateError
+)
+```
+
+**Exception Hierarchy:**
+
+```python
+class ClaudeAgentError(Exception):
+    """Base exception for all claude-agent-toolkit errors."""
+    pass
+
+class ConfigurationError(ClaudeAgentError):
+    """Raised when configuration is missing or invalid."""
+    pass
+
+class ConnectionError(ClaudeAgentError):  
+    """Raised when connection to services fails."""
+    pass
+
+class ExecutionError(ClaudeAgentError):
+    """Raised when agent or tool execution fails."""
+    pass
+
+class StateError(ClaudeAgentError):
+    """Raised when state management operations fail."""
+    pass
+```
+
+**When Each Exception is Raised:**
+
+- **ConfigurationError**: Missing OAuth tokens, invalid tool configurations
+- **ConnectionError**: Docker daemon issues, port conflicts, network failures, MCP server health failures
+- **ExecutionError**: Tool method failures, agent execution problems, CPU-bound operation timeouts
+- **StateError**: JSON patch conflicts, tool lifecycle violations, state serialization failures
+
+**Usage Examples:**
+```python
+# Catch specific exception types
+try:
+    agent = Agent(oauth_token="invalid")
+    result = await agent.run("Calculate 2+2")
+except ConfigurationError as e:
+    print(f"Configuration issue: {e}")
+except ConnectionError as e:
+    print(f"Connection failed: {e}")
+except ExecutionError as e:
+    print(f"Execution failed: {e}")
+except StateError as e:
+    print(f"State management issue: {e}")
+
+# Catch all library exceptions  
+try:
+    # Agent operations
+    pass
+except ClaudeAgentError as e:
+    print(f"Library error: {e}")
+```
+
 ### Logging Functions (`claude_agent_toolkit.logging`)
 
 ```python
@@ -449,69 +574,142 @@ set_logging(format='%(asctime)s - %(name)s - %(message)s')
 
 ## Troubleshooting Guide
 
-### Common Issues
+### Exception-Based Error Handling
 
-#### 1. Docker Connection Errors
-```bash
-# Error: Cannot connect to Docker daemon
-sudo systemctl start docker  # Linux
-# Or start Docker Desktop on macOS/Windows
+Claude Agent Toolkit uses specific exception types to help you identify and handle errors:
+
+```python
+from claude_agent_toolkit import (
+    Agent, BaseTool, tool,
+    ClaudeAgentError, ConfigurationError, ConnectionError,
+    ExecutionError, StateError
+)
+
+# Comprehensive error handling example
+try:
+    # Create agent and run
+    agent = Agent(
+        oauth_token="your-token",
+        system_prompt="You are a helpful assistant",
+        tools=[MyTool().run()]
+    )
+    result = await agent.run("Process my data")
+    
+except ConfigurationError as e:
+    print(f"❌ Configuration Error: {e}")
+    print("💡 Check OAuth token and tool configuration")
+    
+except ConnectionError as e:
+    print(f"❌ Connection Error: {e}")
+    if "Docker" in str(e):
+        print("💡 Start Docker Desktop and try again")
+    elif "bind" in str(e):
+        print("💡 Port may be in use, wait and retry")
+    else:
+        print("💡 Check network connectivity")
+        
+except ExecutionError as e:
+    print(f"❌ Execution Error: {e}")
+    print("💡 Check tool implementation and agent logic")
+    
+except StateError as e:
+    print(f"❌ State Error: {e}")
+    print("💡 Check tool lifecycle and state management")
+    
+except ClaudeAgentError as e:
+    print(f"❌ Library Error: {e}")
+    print("💡 General library issue - check documentation")
+    
+except Exception as e:
+    print(f"❌ Unexpected Error: {e}")
+    print("💡 This may indicate a bug - please report")
 ```
 
-#### 2. OAuth Token Issues
+### Common Issues and Solutions
+
+#### 1. ConfigurationError - Missing Configuration
 ```python
 # Error: OAuth token required
+try:
+    agent = Agent()  # No token provided
+except ConfigurationError as e:
+    print(f"Configuration issue: {e}")
+
+# Solutions:
 export CLAUDE_CODE_OAUTH_TOKEN='your-token-here'
-# Or pass directly to Agent constructor
+# Or pass directly:
 agent = Agent(oauth_token='your-token-here')
 ```
 
-#### 3. Port Conflicts
+#### 2. ConnectionError - Service Connectivity
 ```python
-# Error: Port already in use
-# Tools automatically select available ports, but you can specify:
-class MyTool(BaseTool):
-    def __init__(self):
-        super().__init__()
-        self._port = 9000  # Force specific port
+# Docker connection issues
+try:
+    agent = Agent()
+except ConnectionError as e:
+    if "Docker" in str(e):
+        # Start Docker Desktop
+        # Linux: sudo systemctl start docker
+        pass
+        
+# Port binding issues  
+try:
+    tool = MyTool().run(port=8000)
+except ConnectionError as e:
+    if "bind" in str(e):
+        # Port 8000 already in use - let tool auto-select
+        tool = MyTool().run()  # Auto-selects available port
 ```
 
-#### 4. State Conflicts
+#### 3. ExecutionError - Runtime Failures  
 ```python
-# Handle state conflicts gracefully
+# Tool execution failures
+try:
+    result = await agent.run("Complex task")
+except ExecutionError as e:
+    if "timeout" in str(e):
+        # Increase timeout for CPU-bound operations
+        @tool(cpu_bound=True, timeout_s=300)
+        async def long_task(self):
+            pass
+    else:
+        # Check tool implementation
+        pass
+```
+
+#### 4. StateError - State Management Issues
+```python
+# Tool lifecycle violations
+try:
+    tool = MyTool()
+    url = tool.connection_url  # Tool not started yet
+except StateError as e:
+    print("Start tool first:")
+    tool = MyTool().run()
+    url = tool.connection_url  # Now works
+
+# State conflicts  
 @tool(conflict_policy="retry", max_retries=5)
-async def my_method(self):
-    # Will automatically retry on state conflicts
+async def concurrent_method(self):
+    # Automatically handles state conflicts with retries
     pass
 ```
 
-#### 5. CPU-Bound Operation Timeouts
+#### 5. Debug Mode and Logging
 ```python
-@tool(cpu_bound=True, timeout_s=300)  # 5 minute timeout
-async def long_running_task(self):
-    # Increase timeout for long operations
-    pass
-```
-
-#### 6. Logging Configuration Issues
-```python
-# Issue: Library is too verbose
 from claude_agent_toolkit import set_logging, LogLevel
-set_logging(LogLevel.ERROR)  # Only show errors
 
-# Issue: No logging output visible
-set_logging(LogLevel.INFO)   # Enable info messages
-
-# Issue: Need debugging information
+# Enable detailed debug logging
 set_logging(LogLevel.DEBUG, show_time=True, show_level=True)
 
-# Issue: Want logs in files (use standard Python logging)
-import logging
-set_logging(LogLevel.INFO)
-# Add file handler to root claude_agent_toolkit logger
-claude_logger = logging.getLogger('claude_agent_toolkit')
-file_handler = logging.FileHandler('agent.log')
-claude_logger.addHandler(file_handler)
+# Try operation with full logging
+try:
+    result = await agent.run("your prompt", verbose=True)
+except ClaudeAgentError as e:
+    print(f"Detailed error with logging enabled: {e}")
+
+# Configure logging for production
+set_logging(LogLevel.ERROR, stream=sys.stdout)
 ```
 
 ### Debug Mode

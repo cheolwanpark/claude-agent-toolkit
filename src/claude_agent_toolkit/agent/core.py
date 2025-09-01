@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 from .docker_manager import DockerManager
 from .tool_connector import ToolConnector
 from .executor import ContainerExecutor
+from ..exceptions import ConfigurationError
 
 
 class Agent:
@@ -47,7 +48,7 @@ class Agent:
         self.system_prompt = system_prompt
         
         if not self.oauth_token:
-            raise ValueError("OAuth token required: pass oauth_token or set CLAUDE_CODE_OAUTH_TOKEN")
+            raise ConfigurationError("OAuth token required: pass oauth_token or set CLAUDE_CODE_OAUTH_TOKEN")
         
         # Initialize components
         self.docker_manager = DockerManager()

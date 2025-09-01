@@ -6,6 +6,7 @@ from typing import Any, Optional
 from .server import MCPServer
 from .state_manager import StateManager
 from ..logging import get_logger
+from ..exceptions import StateError
 
 logger = get_logger('tool')
 
@@ -55,7 +56,7 @@ class BaseTool:
     def connection_url(self) -> str:
         """Get MCP connection URL."""
         if not self._port:
-            raise RuntimeError(
+            raise StateError(
                 "Tool is not running. Call tool.run() first, then access connection_url."
             )
         return f"http://{self._host}:{self._port}/mcp"  # no trailing slash
@@ -64,7 +65,7 @@ class BaseTool:
     def health_url(self) -> str:
         """Get health check URL."""
         if not self._port:
-            raise RuntimeError(
+            raise StateError(
                 "Tool is not running. Call tool.run() first, then access health_url."
             )
         return f"http://{self._host}:{self._port}/health"
@@ -83,7 +84,7 @@ class BaseTool:
             Self for chaining
         """
         if self._server:
-            raise RuntimeError("Already running")
+            raise StateError("Already running")
         
         self._server = MCPServer(self, log_level=log_level)
         

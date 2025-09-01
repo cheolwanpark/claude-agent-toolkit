@@ -92,31 +92,40 @@ class MyTool(BaseTool):
 ### Using Tools with Agents
 
 ```python
-from claude_agent_toolkit import Agent
+from claude_agent_toolkit import Agent, ConnectionError, ExecutionError
 
-# Create and start tool
-my_tool = MyTool().run(workers=2)
+try:
+    # Create and start tool
+    my_tool = MyTool().run(workers=2)
 
-# New pattern (recommended) - cleaner initialization
-agent = Agent(
-    system_prompt="You are a helpful assistant specialized in calculations",
-    tools=[my_tool]
-)
+    # New pattern (recommended) - cleaner initialization
+    agent = Agent(
+        system_prompt="You are a helpful assistant specialized in calculations",
+        tools=[my_tool]
+    )
 
-# Traditional pattern - still supported
-# agent = Agent()
-# agent.connect(my_tool)
+    # Traditional pattern - still supported
+    # agent = Agent()
+    # agent.connect(my_tool)
 
-# Run agent with prompt (verbose=True shows detailed message processing)
-result = await agent.run(
-    "Please increment the counter twice and tell me the result",
-    verbose=True  # Shows detailed Claude Code interaction logs
-)
-print(f"Success: {result['success']}")
-print(f"Response: {result['response']}")
+    # Run agent with prompt (verbose=True shows detailed message processing)
+    result = await agent.run(
+        "Please increment the counter twice and tell me the result",
+        verbose=True  # Shows detailed Claude Code interaction logs
+    )
+    print(f"Success: {result['success']}")
+    print(f"Response: {result['response']}")
 
-# Verify tool was actually called
-print(f"Tool state: {my_tool.state}")
+    # Verify tool was actually called
+    print(f"Tool state: {my_tool.state}")
+    
+except ConnectionError as e:
+    print(f"Connection issue: {e}")
+    # Handle Docker, network, or port binding problems
+    
+except ExecutionError as e:
+    print(f"Execution failed: {e}")
+    # Handle agent execution or tool failures
 ```
 
 ## Why Claude Code Agents?
@@ -180,6 +189,36 @@ class BaseTool:
 )
 ```
 
+### Exception Classes
+
+Claude Agent Toolkit provides specific exception types for clear error handling:
+
+```python
+# Import exception classes
+from claude_agent_toolkit import (
+    ClaudeAgentError,     # Base exception for all library errors
+    ConfigurationError,   # Missing OAuth tokens, invalid configuration
+    ConnectionError,      # Docker, network, port binding failures  
+    ExecutionError,       # Agent execution, tool failures, timeouts
+    StateError           # Tool lifecycle, state management issues
+)
+
+# Exception hierarchy
+ClaudeAgentError
+├── ConfigurationError    # Configuration issues
+├── ConnectionError       # Network/service connectivity
+├── ExecutionError       # Runtime execution failures
+└── StateError          # State management problems
+```
+
+**When to catch each exception:**
+
+- **ConfigurationError**: Handle setup issues, missing tokens, invalid configs
+- **ConnectionError**: Handle Docker, network, and port binding failures
+- **ExecutionError**: Handle runtime failures, timeouts, tool execution issues  
+- **StateError**: Handle tool lifecycle violations, state conflicts
+- **ClaudeAgentError**: Catch all library errors with a single handler
+
 ## Development Workflow
 
 ### 1. Start Docker Desktop
@@ -213,28 +252,98 @@ Use your Claude Code subscription to run agents at scale with custom tool integr
 - Node.js 20 with Claude Code CLI
 - Non-root user execution for security
 
+## Error Handling
+
+Claude Agent Toolkit uses specific exception types to help you handle errors gracefully:
+
+```python
+from claude_agent_toolkit import (
+    Agent, BaseTool, tool,
+    ClaudeAgentError, ConfigurationError, ConnectionError,
+    ExecutionError, StateError
+)
+
+# Handle specific error types
+try:
+    agent = Agent(
+        oauth_token="your-token",
+        tools=[MyTool().run()]
+    )
+    result = await agent.run("Process my request")
+    
+except ConfigurationError as e:
+    print(f"Configuration issue: {e}")
+    # Handle missing OAuth token, invalid tool config
+    
+except ConnectionError as e:
+    print(f"Connection failed: {e}")
+    # Handle Docker, network, port binding issues
+    
+except ExecutionError as e:
+    print(f"Execution failed: {e}")
+    # Handle agent execution, tool failures, timeouts
+    
+except StateError as e:
+    print(f"State management issue: {e}")
+    # Handle tool lifecycle, state conflicts
+    
+except ClaudeAgentError as e:
+    print(f"Library error: {e}")
+    # Catch all library errors
+```
+
 ## Troubleshooting
 
 ### Common Issues
 
-**"Cannot connect to Docker"**
+**ConfigurationError: "OAuth token required"**
+```python
+# Set environment variable
+export CLAUDE_CODE_OAUTH_TOKEN='your-token-here'
+
+# Or pass directly to Agent
+agent = Agent(oauth_token='your-token-here')
+```
+
+**ConnectionError: "Cannot connect to Docker"**
 - Ensure Docker Desktop is running
 - Check Docker daemon is accessible
+- Linux: `sudo systemctl start docker`
 
-**"OAuth token required"**  
-- Set `CLAUDE_CODE_OAUTH_TOKEN` environment variable
-- Get token from [Claude Code](https://claude.ai/code)
+**ConnectionError: "Port binding failed"**
+```python
+# Let tools auto-select available ports
+tool = MyTool().run()  # Auto-selects port
 
-**Tool connection failures**
-- Check tool health endpoints are accessible
-- Verify port conflicts (tools auto-assign ports)
-- Review Docker network connectivity
+# Or specify different port
+tool = MyTool().run(port=9000)
+```
+
+**StateError: "Tool is not running"**
+```python
+# Start tool before accessing properties
+tool = MyTool()
+tool.run()  # Start the tool
+url = tool.connection_url  # Now accessible
+```
+
+**ExecutionError: "Operation timed out"**
+```python
+# Increase timeout for CPU-bound operations
+@tool(cpu_bound=True, timeout_s=300)  # 5 minute timeout
+async def heavy_computation(self):
+    pass
+```
 
 ### Debug Mode
-```bash
+```python
+from claude_agent_toolkit import set_logging, LogLevel
+
 # Enable detailed logging
-export CLAUDE_DEBUG=1
-python main.py
+set_logging(LogLevel.DEBUG, show_time=True, show_level=True)
+
+# Run with verbose output
+result = await agent.run("your prompt", verbose=True)
 ```
 
 ## Contributing

@@ -6,7 +6,7 @@ import os
 import sys
 
 # Import from claude-agent-toolkit package
-from claude_agent_toolkit import Agent
+from claude_agent_toolkit import Agent, ConnectionError, ConfigurationError, ExecutionError
 
 # Import our calculator tool and prompts
 from tool import CalculatorTool
@@ -111,15 +111,23 @@ async def run_calculator_demo():
             print(f"\n❌ FAILURE: Calculator tool was not used")
             return False
             
-    except RuntimeError as e:
-        if "Cannot connect to Docker" in str(e):
-            print(f"\n{e}")
+    except ConnectionError as e:
+        print(f"\n❌ Connection Error: {e}")
+        if "Docker" in str(e):
             print("\n💡 Please start Docker Desktop and run this demo again.")
-            return False
-        else:
-            raise
+        elif "bind" in str(e) or "port" in str(e):
+            print("\n💡 Port may be in use. Try again in a moment.")
+        return False
+    except ConfigurationError as e:
+        print(f"\n❌ Configuration Error: {e}")
+        print("\n💡 Check your OAuth token and tool configuration.")
+        return False
+    except ExecutionError as e:
+        print(f"\n❌ Execution Error: {e}")
+        print("\n💡 The agent execution failed. Check the error details above.")
+        return False
     except Exception as e:
-        print(f"\n❌ Error during calculator demo: {e}")
+        print(f"\n❌ Unexpected error during calculator demo: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -169,8 +177,20 @@ async def run_interactive_mode():
             else:
                 print(f"\n❌ Error: {result.get('error', 'Unknown error occurred')}")
     
+    except ConnectionError as e:
+        print(f"\n❌ Connection Error: {e}")
+        if "Docker" in str(e):
+            print("\n💡 Please start Docker Desktop and try again.")
+    except ConfigurationError as e:
+        print(f"\n❌ Configuration Error: {e}")
+        print("\n💡 Check your OAuth token and tool configuration.")
+    except ExecutionError as e:
+        print(f"\n❌ Execution Error: {e}")
+        print("\n💡 The agent execution failed. Try rephrasing your question.")
+    except KeyboardInterrupt:
+        print("\n\n👋 Goodbye!")
     except Exception as e:
-        print(f"\n❌ Error in interactive mode: {e}")
+        print(f"\n❌ Unexpected error in interactive mode: {e}")
         import traceback
         traceback.print_exc()
 
