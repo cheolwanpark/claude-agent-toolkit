@@ -10,6 +10,13 @@ from claude_code_sdk import (
     TextBlock, ThinkingBlock, ToolUseBlock, ToolResultBlock
 )
 
+# Model ID mappings (short aliases to full model IDs)
+MODEL_ID_MAPPING = {
+    "opus": "claude-opus-4-1-20250805",
+    "sonnet": "claude-sonnet-4-20250514",
+    "haiku": "claude-3-5-haiku-20241022"
+}
+
 
 async def main():
     """Main function that runs inside the Docker container."""
@@ -21,6 +28,10 @@ async def main():
     system_prompt = os.environ.get('AGENT_SYSTEM_PROMPT')
     verbose = os.environ.get('AGENT_VERBOSE', '0') == '1'
     model = os.environ.get('ANTHROPIC_MODEL', 'sonnet')
+    
+    # Apply model ID mapping if needed
+    if model in MODEL_ID_MAPPING:
+        model = MODEL_ID_MAPPING[model]
     
     if not prompt:
         print(json.dumps({
@@ -80,7 +91,8 @@ async def main():
     options = ClaudeCodeOptions(
         permission_mode="bypassPermissions",
         mcp_servers=mcp_servers if mcp_servers else {},
-        system_prompt=system_prompt
+        system_prompt=system_prompt,
+        model=model
     )
     
     print(f"[entrypoint] Claude Code options - allowed_tools: {options.allowed_tools}", flush=True)
