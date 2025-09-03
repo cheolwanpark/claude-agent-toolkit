@@ -10,16 +10,15 @@ from weather import WeatherAPI
 
 
 class WeatherTool(BaseTool):
-    """A comprehensive weather tool providing current conditions and forecasts."""
+    """A comprehensive weather tool providing current conditions and forecasts. Users manage data explicitly."""
     
     def __init__(self):
         super().__init__()
-        self.state = {
-            "recent_queries": [],
-            "query_count": 0,
-            "favorite_locations": [],
-            "last_location": None
-        }
+        # Explicit data management - no automatic state management  
+        self.recent_queries = []
+        self.query_count = 0
+        self.favorite_locations = []
+        self.last_location = None
         
         # Initialize persistent HTTP client for better performance
         self.client = httpx.AsyncClient(
@@ -31,22 +30,19 @@ class WeatherTool(BaseTool):
     
     def _record_query(self, location: str, query_type: str) -> None:
         """Record a weather query in the history."""
-        self.state["query_count"] += 1
-        self.state["last_location"] = location
-        self.state["recent_queries"].append({
-            "id": self.state["query_count"],
+        self.query_count += 1
+        self.last_location = location
+        self.recent_queries.append({
+            "id": self.query_count,
             "location": location,
             "query_type": query_type,
             "timestamp": datetime.now().isoformat()
         })
         # Keep only last 20 queries
-        if len(self.state["recent_queries"]) > 20:
-            self.state["recent_queries"] = self.state["recent_queries"][-20:]
+        if len(self.recent_queries) > 20:
+            self.recent_queries = self.recent_queries[-20:]
     
-    @tool(
-        description="Get current weather conditions for a location",
-        cpu_bound=False
-    )
+    @tool(description="Get current weather conditions for a location")
     async def get_current_weather(self, location: str = "") -> Dict[str, Any]:
         """Get current weather conditions for a specific location."""
         self._record_query(location or "current location", "current_weather")
@@ -78,10 +74,7 @@ class WeatherTool(BaseTool):
                 "message": f"Failed to retrieve weather data for {location}"
             }
     
-    @tool(
-        description="Get weather forecast for a location (1-3 days)",
-        cpu_bound=False
-    )
+    @tool(description="Get weather forecast for a location (1-3 days)")
     async def get_forecast(self, location: str = "", days: int = 3) -> Dict[str, Any]:
         """Get weather forecast for a specific location."""
         days = max(1, min(days, 3))  # Ensure valid range
@@ -113,10 +106,7 @@ class WeatherTool(BaseTool):
                 "message": f"Failed to retrieve forecast for {location}"
             }
     
-    @tool(
-        description="Get a simple weather summary for a location",
-        cpu_bound=False
-    )
+    @tool(description="Get a simple weather summary for a location")
     async def get_weather_summary(self, location: str = "") -> Dict[str, Any]:
         """Get a brief weather summary for a location."""
         self._record_query(location or "current location", "summary")
@@ -144,10 +134,7 @@ class WeatherTool(BaseTool):
                 "message": f"Failed to retrieve weather summary for {location}"
             }
     
-    @tool(
-        description="Compare weather between two locations",
-        cpu_bound=False
-    )
+    @tool(description="Compare weather between two locations")
     async def compare_weather(self, location1: str, location2: str) -> Dict[str, Any]:
         """Compare current weather conditions between two locations."""
         self._record_query(f"{location1} vs {location2}", "comparison")
@@ -201,14 +188,11 @@ class WeatherTool(BaseTool):
                 "message": f"Failed to compare weather between {location1} and {location2}"
             }
     
-    @tool(
-        description="Add a location to favorites list",
-        cpu_bound=False
-    )
+    @tool(description="Add a location to favorites list")
     async def add_favorite_location(self, location: str, nickname: str = "") -> Dict[str, Any]:
         """Add a location to the favorites list."""
         # Check if already in favorites
-        existing = next((fav for fav in self.state["favorite_locations"] 
+        existing = next((fav for fav in self.favorite_locations 
                         if fav["location"].lower() == location.lower()), None)
         
         if existing:
@@ -216,7 +200,7 @@ class WeatherTool(BaseTool):
                 "success": False,
                 "location": location,
                 "message": f"{location} is already in your favorites list",
-                "favorites": self.state["favorite_locations"]
+                "favorites": self.favorite_locations
             }
         
         favorite = {
@@ -225,7 +209,7 @@ class WeatherTool(BaseTool):
             "added_at": datetime.now().isoformat()
         }
         
-        self.state["favorite_locations"].append(favorite)
+        self.favorite_locations.append(favorite)
         
         print(f"\n⭐ [Weather] Added {location} to favorites as '{nickname or location}'\n")
         
@@ -234,56 +218,47 @@ class WeatherTool(BaseTool):
             "location": location,
             "nickname": nickname or location,
             "message": f"Added {location} to favorites",
-            "favorites_count": len(self.state["favorite_locations"])
+            "favorites_count": len(self.favorite_locations)
         }
     
-    @tool(
-        description="Get recent weather query history",
-        cpu_bound=False
-    )
+    @tool(description="Get recent weather query history")
     async def get_query_history(self, limit: int = 10) -> Dict[str, Any]:
         """Get the recent weather query history."""
-        recent_queries = self.state["recent_queries"][-limit:] if self.state["recent_queries"] else []
+        recent_queries = self.recent_queries[-limit:] if self.recent_queries else []
         
         return {
             "history": recent_queries,
-            "total_queries": self.state["query_count"],
+            "total_queries": self.query_count,
             "limit": limit,
-            "last_location": self.state["last_location"],
+            "last_location": self.last_location,
             "message": f"Retrieved last {len(recent_queries)} weather queries from history"
         }
     
-    @tool(
-        description="Get favorite locations list",
-        cpu_bound=False
-    )
+    @tool(description="Get favorite locations list")
     async def get_favorite_locations(self) -> Dict[str, Any]:
         """Get the list of favorite locations."""
         return {
-            "favorites": self.state["favorite_locations"],
-            "count": len(self.state["favorite_locations"]),
-            "message": f"You have {len(self.state['favorite_locations'])} favorite locations"
+            "favorites": self.favorite_locations,
+            "count": len(self.favorite_locations),
+            "message": f"You have {len(self.favorite_locations)} favorite locations"
         }
     
-    @tool(
-        description="Clear weather query history and reset state",
-        cpu_bound=False
-    )
+    @tool(description="Clear weather query history and reset data")
     async def clear_history(self) -> Dict[str, Any]:
         """Clear weather query history and reset state."""
-        old_count = self.state["query_count"]
+        old_count = self.query_count
         
-        self.state = {
-            "recent_queries": [],
-            "query_count": 0,
-            "favorite_locations": self.state.get("favorite_locations", []),  # Preserve favorites
-            "last_location": None
-        }
+        # Clear query data but preserve favorites
+        favorites_backup = self.favorite_locations.copy()
+        self.recent_queries = []
+        self.query_count = 0
+        self.favorite_locations = favorites_backup
+        self.last_location = None
         
         print(f"\n🧹 [Weather] Query history cleared ({old_count} queries removed)\n")
         
         return {
             "message": f"Weather query history cleared ({old_count} queries removed)",
-            "favorites_preserved": len(self.state["favorite_locations"]),
+            "favorites_preserved": len(self.favorite_locations),
             "cleared": True
         }

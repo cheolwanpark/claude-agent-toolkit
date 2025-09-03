@@ -11,8 +11,7 @@ from .exceptions import (
     ClaudeAgentError,
     ConfigurationError, 
     ConnectionError,
-    ExecutionError,
-    StateError
+    ExecutionError
 )
 
 __version__ = "0.1.2"
@@ -25,6 +24,5 @@ __all__ = [
     "ClaudeAgentError",
     "ConfigurationError", 
     "ConnectionError",
-    "ExecutionError",
-    "StateError"
+    "ExecutionError"
 ]

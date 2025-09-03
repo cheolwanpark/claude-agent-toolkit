@@ -1,62 +1,51 @@
 #!/usr/bin/env python3
 # base.py - Simplified BaseTool class
 
-from typing import Any, Optional
+from typing import Optional
 
 from .server import MCPServer
-from .state_manager import StateManager
 from ..logging import get_logger
-from ..exceptions import StateError
+from ..exceptions import ConnectionError
 
 logger = get_logger('tool')
 
 
 class BaseTool:
     """
-    Base class for MCP tools with state management and HTTP server support.
+    Base class for MCP tools with HTTP server support.
+    
+    Tools are stateless by design - manage your own data explicitly.
     
     Usage:
         class MyTool(BaseTool):
             def __init__(self):
                 super().__init__()
-                self.state = {"my_data": []}
+                # Manage your own data explicitly
+                self.my_data = []
             
-            @tool(description="My tool function")
-            async def my_method(self, param: str) -> dict:
-                # Tool logic here
+            @tool(description="Async tool function")
+            async def my_async_method(self, param: str) -> dict:
+                # Async tool logic here
+                return {"result": "success"}
+            
+            @tool(description="Parallel tool function", parallel=True)
+            def my_parallel_method(self, param: str) -> dict:
+                # Sync tool logic that runs in separate process
                 return {"result": "success"}
     """
     
-    def __init__(self, *args, **kwargs):
-        """Initialize the tool with state management."""
-        # Store init args for potential serialization
-        self._init_args = args
-        self._init_kwargs = kwargs
-        
-        # Initialize state management
-        self._state_manager = StateManager()
-        
-        # Server management
+    def __init__(self):
+        """Initialize the tool."""
+        # Server management only
         self._server: Optional[MCPServer] = None
         self._host: str = "127.0.0.1"
         self._port: Optional[int] = None
     
     @property
-    def state(self) -> Any:
-        """Get current state."""
-        return self._state_manager.state
-    
-    @state.setter
-    def state(self, value: Any):
-        """Set state value."""
-        self._state_manager.state = value
-        self._state_manager.version = 0  # Reset version on direct assignment
-    
-    @property
     def connection_url(self) -> str:
         """Get MCP connection URL."""
         if not self._port:
-            raise StateError(
+            raise ConnectionError(
                 "Tool is not running. Call tool.run() first, then access connection_url."
             )
         return f"http://{self._host}:{self._port}/mcp"  # no trailing slash
@@ -65,7 +54,7 @@ class BaseTool:
     def health_url(self) -> str:
         """Get health check URL."""
         if not self._port:
-            raise StateError(
+            raise ConnectionError(
                 "Tool is not running. Call tool.run() first, then access health_url."
             )
         return f"http://{self._host}:{self._port}/health"
@@ -77,14 +66,14 @@ class BaseTool:
         Args:
             host: Host to bind to
             port: Port to bind to (auto-select if None)  
-            workers: Number of worker processes (for CPU-bound operations)
+            workers: Number of worker processes (for parallel operations)
             log_level: Logging level for FastMCP (DEBUG, INFO, WARNING, ERROR, CRITICAL)
             
         Returns:
             Self for chaining
         """
         if self._server:
-            raise StateError("Already running")
+            raise ConnectionError("Already running")
         
         self._server = MCPServer(self, log_level=log_level)
         

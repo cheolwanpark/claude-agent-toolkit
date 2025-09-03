@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # server.py - HTTP server management for MCP tools
 
-import asyncio
 import inspect
 import socket
 import threading
@@ -13,8 +12,7 @@ from fastmcp import FastMCP
 from fastmcp.utilities.logging import configure_logging
 
 from .worker import WorkerPoolManager
-from .state_manager import apply_patch_inplace
-from ..exceptions import ConnectionError, StateError, ExecutionError
+from ..exceptions import ConnectionError, ExecutionError
 
 
 class MCPServer:
@@ -75,39 +73,24 @@ class MCPServer:
         
         return methods
     
-    def _register_cpu_tool(self, mcp: FastMCP, method: Callable, meta: Dict[str, Any]):
-        """Register CPU-bound tool method with worker pool execution."""
+    def _register_parallel_tool(self, mcp: FastMCP, method: Callable, meta: Dict[str, Any]):
+        """Register parallel tool method with worker pool execution."""
         sig = inspect.signature(method)
         params = [str(p) for p in sig.parameters.values()]
         param_list = ", ".join(params)
         param_names = [p.name for p in sig.parameters.values()]
 
-        snapshot_cfg_fields: List[str] = meta.get("snapshot", [])
-
         async def __dispatcher__(**kw):
-            # Snapshot state + config
-            state_snapshot, current_version = self.tool_instance._state_manager.get_snapshot()
-            config_fields = {k: getattr(self.tool_instance, k) for k in snapshot_cfg_fields}
-            
             args = tuple(kw[p] for p in param_names)
             
-            result = await self.worker_manager.execute_cpu_bound(
-                method, meta, state_snapshot, current_version, config_fields, args, {}
-            )
-            
-            if "error" in result:
-                # Convert error dict to exception
-                error_msg = result["error"]
-                if error_msg == "conflict":
-                    raise StateError(f"State conflict: expected version {result.get('expected')}, got {result.get('actual')}")
-                elif "timeout" in error_msg:
-                    raise ExecutionError(f"Operation timed out: {error_msg}")
-                else:
-                    raise ExecutionError(f"CPU-bound operation failed: {error_msg}")
-            
-            # Commit patch
-            self.tool_instance._state_manager.apply_changes(result["patch"])
-            return result["result"]
+            try:
+                result = await self.worker_manager.execute_parallel(method, meta, args, {})
+                return result
+            except ExecutionError:
+                # Re-raise ExecutionError as-is
+                raise
+            except Exception as e:
+                raise ExecutionError(f"Parallel operation failed: {e}") from e
 
         # Generate wrapper with SAME signature as original
         ns: Dict[str, Any] = {"__dispatcher__": __dispatcher__}
@@ -138,8 +121,8 @@ class MCPServer:
 
         # Register all tool methods
         for method, meta in self._collect_tool_methods():
-            if meta.get("cpu_bound", False):
-                self._register_cpu_tool(mcp, method, meta)
+            if meta.get("parallel", False):
+                self._register_parallel_tool(mcp, method, meta)
             else:
                 mcp.tool(name=meta["name"], description=meta["description"])(method)
 
@@ -168,7 +151,7 @@ class MCPServer:
             Tuple of (host, port) the server is running on
         """
         if self._server_thread:
-            raise StateError("Server already running")
+            raise ConnectionError("Server already running")
         
         actual_port = port or self._pick_port(host)
         

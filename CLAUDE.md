@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Claude Agent Toolkit is a production-ready Python framework for building sophisticated Claude Code agents with custom MCP tools. This framework provides a Docker-isolated environment where Claude Code can orchestrate stateful, parallel-processing tools for enterprise workflows, leveraging your Claude Code subscription token.
+Claude Agent Toolkit is a production-ready Python framework for building sophisticated Claude Code agents with custom MCP tools. This framework provides a Docker-isolated environment where Claude Code can orchestrate parallel-processing tools for enterprise workflows, leveraging your Claude Code subscription token.
 
 ### Key Features
-- **Production-Ready Architecture**: Enterprise-grade agent framework with proper state management
+- **Production-Ready Architecture**: Enterprise-grade agent framework with explicit data management
 - **MCP Tool Integration**: HTTP-based Model Context Protocol servers with automatic discovery
-- **Stateful Operations**: Advanced state management with versioning and conflict resolution
-- **Parallel Processing**: CPU-bound operations run in separate worker processes
+- **Parallel Processing**: CPU-intensive operations run in separate worker processes
+- **Simplified Architecture**: No hidden state management - users control their own data
 - **Docker Isolation**: Pre-built Docker environment ensures consistent execution
 - **Intelligent Orchestration**: Claude Code makes context-aware decisions about tool usage
 
@@ -25,8 +25,8 @@ Claude Agent Toolkit implements a distributed architecture where custom MCP tool
 │                 │    │                  │    │                     │
 │  Agent.run()    │───▶│  Claude Code CLI │───▶│ HTTP MCP Servers    │
 │  ├─ToolConnector│    │  ├─ MCP Client   │    │ ├─ BaseTool         │
-│  ├─DockerManager│    │  └─ Entrypoint   │    │ ├─ StateManager     │
-│  └─ContainerExec│    │                  │    │ └─ WorkerManager    │
+│  ├─DockerManager│    │  └─ Entrypoint   │    │ └─ WorkerManager    │
+│  └─ContainerExec│    │                  │    │                     │
 └─────────────────┘    └──────────────────┘    └─────────────────────┘
 ```
 
@@ -39,11 +39,10 @@ Claude Agent Toolkit implements a distributed architecture where custom MCP tool
 - **ToolConnector** (`tool_connector.py`): Manages connections and URLs for MCP tool servers
 
 #### MCP Tool Framework (`src/claude_agent_toolkit/tool/`)
-- **BaseTool** (`base.py`): Abstract base class for all custom tools with state management
+- **BaseTool** (`base.py`): Abstract base class for all custom tools
 - **@tool decorator** (`decorator.py`): Method decorator that registers MCP tools with rich configuration
 - **MCPServer** (`server.py`): HTTP server implementation using FastMCP with automatic port selection
-- **StateManager** (`state_manager.py`): JSON-based state versioning with conflict resolution
-- **WorkerManager** (`worker.py`): Process pool for CPU-bound operations with state snapshots
+- **WorkerManager** (`worker.py`): ProcessPoolExecutor manager for parallel operations
 
 #### Docker Environment
 - **Pre-built Image**: `cheolwanpark/claude-agent-toolkit:0.1.1` - Production Docker image with Claude Code CLI
@@ -57,25 +56,33 @@ Claude Agent Toolkit implements a distributed architecture where custom MCP tool
 class MyTool(BaseTool):
     def __init__(self):
         super().__init__()
-        self.state = {"operations": [], "config": {}}
+        # Explicit data management - no automatic state
+        self.operations = []
+        self.config = {}
     
     @tool(
-        description="Process data with advanced options",
-        cpu_bound=True,  # Run in separate process
-        timeout_s=120,   # Custom timeout
-        conflict_policy="retry",  # State conflict handling
-        max_retries=5    # Retry attempts
+        description="Process data asynchronously",
+        # parallel=False by default for async functions
     )
-    async def process_data(self, data: str, options: dict) -> dict:
-        # Tool implementation
+    async def process_data_async(self, data: str, options: dict) -> dict:
+        # Async tool implementation
+        return {"result": processed_data}
+    
+    @tool(
+        description="Process data in parallel",
+        parallel=True,   # Run in separate process
+        timeout_s=120    # Custom timeout for parallel ops
+    )
+    def process_data_parallel(self, data: str, options: dict) -> dict:
+        # Sync tool implementation - runs in worker process
         return {"result": processed_data}
 ```
 
-#### 2. State Management System
-- **Automatic Versioning**: Every state change increments version counter
-- **Conflict Detection**: JSON patch-based change tracking prevents race conditions
-- **Retry Policies**: Configurable exponential backoff for state conflicts
-- **Snapshot Support**: CPU-bound operations capture state snapshots for consistency
+#### 2. Data Management
+- **Explicit Control**: Users manage their own data as instance variables
+- **No Hidden State**: No automatic versioning or conflict resolution
+- **ProcessPoolExecutor Isolation**: Parallel operations (parallel=True) run under ProcessPoolExecutor with new instances
+- **Critical**: Users MUST use semaphores or atomic datatypes for parallel=True tools when sharing data
 
 #### 3. MCP Server Lifecycle
 1. Tool instantiation automatically creates MCPServer instance
@@ -205,7 +212,7 @@ git tag v0.1.2 && git push origin v0.1.2
 
 ## Advanced Code Patterns
 
-### Tool Creation with State Management
+### Tool Creation with Explicit Data Management
 ```python
 from claude_agent_toolkit import BaseTool, tool
 from typing import List, Dict, Any
@@ -214,60 +221,49 @@ import time
 class AdvancedTool(BaseTool):
     def __init__(self):
         super().__init__()
-        # State is automatically managed with versioning
-        self.state = {
-            "operations": [],
-            "cache": {},
-            "config": {"max_operations": 100}
-        }
+        # Explicit data management - users control their own data
+        self.operations = []
+        self.cache = {}
+        self.config = {"max_operations": 100}
     
-    @tool(
-        description="Fast async operation with state tracking",
-        cpu_bound=False
-    )
+    @tool(description="Fast async operation")
     async def quick_operation(self, data: str) -> Dict[str, Any]:
-        # State changes are automatically versioned
+        # Manage your own data explicitly
         operation = {
             "timestamp": time.time(),
             "input": data,
             "result": f"processed_{data}"
         }
-        self.state["operations"].append(operation)
+        self.operations.append(operation)
         return operation
     
     @tool(
         description="CPU-intensive operation with worker process",
-        cpu_bound=True,
-        timeout_s=300,
-        snapshot=["config"],  # Snapshot specific state fields
-        conflict_policy="retry",
-        max_retries=3
+        parallel=True,   # Runs in separate process
+        timeout_s=300    # Custom timeout for parallel operations
     )
-    async def heavy_computation(self, numbers: List[int]) -> Dict[str, Any]:
-        # This runs in a separate process with state snapshot
+    def heavy_computation(self, numbers: List[int]) -> Dict[str, Any]:
+        # Sync function - runs in separate process
+        # Note: ProcessPoolExecutor creates new instance, self.cache won't persist
+        # Users must use semaphores or atomic datatypes if sharing data
         import math
         results = [math.factorial(n) for n in numbers if n < 20]
         
-        # State changes are merged back after process completion
-        self.state["cache"]["last_computation"] = {
+        return {
+            "factorials": results,
             "input_count": len(numbers),
             "results_count": len(results)
         }
-        return {"factorials": results}
     
-    @tool(
-        description="Operation with advanced error handling",
-        cpu_bound=False,
-        conflict_policy="error",  # Fail fast on conflicts
-    )
+    @tool(description="Operation with error handling")
     async def critical_operation(self, value: str) -> Dict[str, Any]:
         try:
-            # Simulate critical operation
+            # Async operation
             if not value:
                 raise ValueError("Value cannot be empty")
             
             result = {"processed": value.upper(), "timestamp": time.time()}
-            self.state["operations"].append(result)
+            self.operations.append(result)
             return result
             
         except Exception as e:
@@ -311,33 +307,23 @@ async def main():
 asyncio.run(main())
 ```
 
-### State Conflict Resolution Patterns
+### Async vs Parallel Tool Patterns
 ```python
 class StatefulTool(BaseTool):
     def __init__(self):
         super().__init__()
         self.state = {"counter": 0, "items": []}
     
-    @tool(
-        description="Increment counter with retry on conflict",
-        conflict_policy="retry",
-        max_retries=5,
-        backoff_initial_ms=10,
-        backoff_max_ms=1000
-    )
+    @tool(description="Increment counter")
     async def increment_counter(self) -> Dict[str, Any]:
-        # If state conflict occurs, this will automatically retry
-        # with exponential backoff
+        # Users manage their own data explicitly
         old_value = self.state["counter"]
         self.state["counter"] += 1
         return {"old_value": old_value, "new_value": self.state["counter"]}
     
-    @tool(
-        description="Add item with error on conflict",
-        conflict_policy="error"  # Fail immediately on conflict
-    )
+    @tool(description="Add item to list")
     async def add_item(self, item: str) -> Dict[str, Any]:
-        # This will raise an exception if state conflict occurs
+        # Users handle concurrency explicitly if needed
         self.state["items"].append({
             "value": item,
             "timestamp": time.time()
@@ -444,7 +430,7 @@ Claude Agent Toolkit uses a comprehensive exception hierarchy for clear error ha
 from claude_agent_toolkit import (
     BaseTool, tool, 
     ClaudeAgentError, ConfigurationError, ConnectionError, 
-    ExecutionError, StateError
+    ExecutionError
 )
 
 class RobustTool(BaseTool):
@@ -478,7 +464,7 @@ class ExceptionAwareTool(BaseTool):
     @tool(description="Method that can raise various exceptions")
     async def complex_method(self, param: str) -> Dict[str, Any]:
         # Let framework exceptions propagate naturally
-        if not self._port:  # This will raise StateError from BaseTool
+        if not self._port:  # This will raise ConnectionError from BaseTool
             return self.connection_url
         
         # Wrap third-party exceptions appropriately
@@ -509,14 +495,10 @@ ClaudeAgentError                    # Base exception for all library errors
 │   ├── Docker connection issues   # Docker daemon problems
 │   ├── Socket binding failures    # Port conflicts, network issues
 │   └── Tool server connectivity   # MCP server health failures
-├── ExecutionError                 # Agent and tool execution failures
-│   ├── Tool method failures       # Custom tool errors
-│   ├── CPU-bound timeouts         # Worker process timeouts
-│   └── Agent execution issues     # Claude Code execution problems  
-└── StateError                     # State management and tool lifecycle
-    ├── State conflicts           # JSON patch conflicts
-    ├── Tool lifecycle violations # Accessing tools before .run()
-    └── State serialization       # JSON serialization failures
+└── ExecutionError                 # Agent and tool execution failures
+    ├── Tool method failures       # Custom tool errors
+    ├── Parallel timeouts          # Worker process timeouts
+    └── Agent execution issues     # Claude Code execution problems
 ```
 
 ## Claude Code Agent Approach
@@ -524,7 +506,7 @@ ClaudeAgentError                    # Base exception for all library errors
 This framework enables building production Claude Code agents by:
 1. Leveraging Claude Code's advanced reasoning with your subscription token
 2. Providing custom tools that extend Claude Code's capabilities
-3. Managing stateful workflows where Claude Code builds context across tool interactions
+3. Providing explicit data management where users control their own persistence
 4. Orchestrating multi-tool coordination through Claude Code's intelligent decision-making
 
 The framework focuses on production-ready agent development rather than testing - you build agents that use Claude Code's intelligence with your custom tool implementations.
@@ -573,11 +555,10 @@ class Agent:
 ```python
 class BaseTool:
     def __init__(self):
-        self.state: Dict[str, Any]  # Persistent state dictionary
+        # No automatic state - manage your own data as instance variables
 ```
 
 **Properties:**
-- `state`: Automatically managed state dictionary with versioning
 - `connection_url`: HTTP URL for MCP server connection
 - `health_url`: Health check endpoint URL
 
@@ -592,42 +573,22 @@ def tool(
     name: Optional[str] = None,
     description: str = "",
     *,
-    cpu_bound: bool = False,
+    parallel: bool = False,
     timeout_s: int = 60,
-    snapshot: Optional[List[str]] = None,
-    conflict_policy: str = "retry",
-    max_retries: int = 16,
-    backoff_initial_ms: int = 5,
-    backoff_max_ms: int = 250,
 )
 ```
 
 **Parameters:**
 - `name`: Tool name (defaults to function name)
 - `description`: Tool description for Claude Code
-- `cpu_bound`: Whether to run in separate process
-- `timeout_s`: Timeout for CPU-bound operations
-- `snapshot`: State fields to snapshot for CPU-bound ops
-- `conflict_policy`: "retry" or "error" for state conflicts
-- `max_retries`: Maximum retry attempts
-- `backoff_initial_ms`: Initial backoff delay
-- `backoff_max_ms`: Maximum backoff delay
+- `parallel`: Whether to run in separate process (must be sync function)
+- `timeout_s`: Timeout for parallel operations
 
-### StateManager Class (`claude_agent_toolkit.tool.StateManager`)
+**Validation Rules:**
+- `parallel=True` requires sync function (`def`, not `async def`)
+- `parallel=False` requires async function (`async def`)
 
-```python
-class StateManager:
-    def __init__(self, initial_state: Dict[str, Any])
-    
-    @property
-    def state -> Dict[str, Any]  # Current state
-    @property
-    def version -> int           # Current version number
-    
-    def get_snapshot() -> Dict[str, Any]
-    def apply_changes(changes: List[Dict]) -> None
-    def clone_state() -> Dict[str, Any]
-```
+
 
 ### Exception Classes (`claude_agent_toolkit.exceptions`)
 
@@ -636,7 +597,7 @@ Claude Agent Toolkit provides a comprehensive exception hierarchy for clear erro
 ```python
 from claude_agent_toolkit import (
     ClaudeAgentError, ConfigurationError, ConnectionError,
-    ExecutionError, StateError
+    ExecutionError
 )
 ```
 
@@ -659,17 +620,13 @@ class ExecutionError(ClaudeAgentError):
     """Raised when agent or tool execution fails."""
     pass
 
-class StateError(ClaudeAgentError):
-    """Raised when state management operations fail."""
-    pass
 ```
 
 **When Each Exception is Raised:**
 
 - **ConfigurationError**: Missing OAuth tokens, invalid tool configurations
 - **ConnectionError**: Docker daemon issues, port conflicts, network failures, MCP server health failures
-- **ExecutionError**: Tool method failures, agent execution problems, CPU-bound operation timeouts
-- **StateError**: JSON patch conflicts, tool lifecycle violations, state serialization failures
+- **ExecutionError**: Tool method failures, agent execution problems, parallel operation timeouts
 
 **Usage Examples:**
 ```python
@@ -683,7 +640,7 @@ except ConnectionError as e:
     print(f"Connection failed: {e}")
 except ExecutionError as e:
     print(f"Execution failed: {e}")
-except StateError as e:
+except ConnectionError as e:
     print(f"State management issue: {e}")
 
 # Catch all library exceptions  
@@ -750,7 +707,7 @@ Claude Agent Toolkit uses specific exception types to help you identify and hand
 from claude_agent_toolkit import (
     Agent, BaseTool, tool,
     ClaudeAgentError, ConfigurationError, ConnectionError,
-    ExecutionError, StateError
+    ExecutionError
 )
 
 # Comprehensive error handling example
@@ -780,9 +737,9 @@ except ExecutionError as e:
     print(f"❌ Execution Error: {e}")
     print("💡 Check tool implementation and agent logic")
     
-except StateError as e:
-    print(f"❌ State Error: {e}")
-    print("💡 Check tool lifecycle and state management")
+except ConnectionError as e:
+    print(f"❌ Connection Error: {e}")
+    print("💡 Check tool lifecycle and server connection")
     
 except ClaudeAgentError as e:
     print(f"❌ Library Error: {e}")
@@ -836,22 +793,22 @@ try:
     result = await agent.run("Complex task")
 except ExecutionError as e:
     if "timeout" in str(e):
-        # Increase timeout for CPU-bound operations
-        @tool(cpu_bound=True, timeout_s=300)
-        async def long_task(self):
+        # Increase timeout for parallel operations
+        @tool(parallel=True, timeout_s=300)
+        def long_task(self):
             pass
     else:
         # Check tool implementation
         pass
 ```
 
-#### 4. StateError - State Management Issues
+#### 4. StateError - Data Management Issues
 ```python
 # Tool lifecycle violations
 try:
     tool = MyTool()
     url = tool.connection_url  # Tool not started yet
-except StateError as e:
+except ConnectionError as e:
     print("Start tool first:")
     tool = MyTool().run()
     url = tool.connection_url  # Now works
@@ -904,15 +861,15 @@ tool.run()  # Start server
 
 ## Performance Optimization
 
-### 1. CPU-Bound Operations
-- Always use `cpu_bound=True` for computationally intensive tasks
-- Use `snapshot` parameter to minimize state transfer overhead
+### 1. Parallel Operations
+- Use `parallel=True` for computationally intensive tasks (must be sync functions)
 - Set appropriate timeouts to prevent hanging
+- Handle your own data persistence - parallel operations create new instances
 
-### 2. State Management
-- Keep state dictionaries lightweight
-- Use conflict resolution strategies appropriate for your use case
-- Consider using `conflict_policy="error"` for critical operations
+### 2. Data Management
+- Manage your own data as instance variables
+- Handle race conditions explicitly when needed  
+- Consider data persistence requirements for parallel operations
 
 ### 3. Docker Optimization
 - Pre-pull the Docker image: `docker pull cheolwanpark/claude-agent-toolkit:0.1.1`
@@ -920,7 +877,7 @@ tool.run()  # Start server
 - Monitor container resource usage in production
 
 ### 4. Tool Design
-- Design tools to be stateless when possible
+- Tools are stateless by design - manage your own data explicitly
 - Use async/await properly for I/O-bound operations
 - Implement proper error handling and graceful degradation
 
@@ -941,10 +898,10 @@ tool.run()  # Start server
 - Implement rate limiting for resource-intensive operations
 - Use proper error handling to avoid information leakage
 
-### 4. State Security
-- Avoid storing sensitive data in tool state
+### 4. Data Security
+- Avoid storing sensitive data in instance variables
 - Implement proper data sanitization
-- Consider encryption for sensitive state data
+- Consider encryption for sensitive data
 
 ### 5. Network Security
 - Tools run HTTP servers on localhost by default
@@ -998,7 +955,7 @@ set_logging(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 **Logging Components:**
 - `claude_agent_toolkit.agent`: Agent orchestration, Docker operations, tool connections
-- `claude_agent_toolkit.tool`: Tool server startup, state management
+- `claude_agent_toolkit.tool`: Tool server startup, parallel execution
 
 ### Monitoring and Performance
 ```python

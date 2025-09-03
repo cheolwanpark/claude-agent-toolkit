@@ -6,7 +6,7 @@ A Python framework for building Claude Code agents with custom tools, designed t
 
 - **Claude Code Integration** - Leverage Claude Code's advanced reasoning with your existing subscription token
 - **Docker Isolation** - Complete isolation of agent execution environment with Claude Code CLI
-- **Advanced State Management** - JSON patch-based state management with conflict resolution and automatic retries  
+- **Explicit Data Management** - Users control their own data without automatic state management  
 - **CPU-bound Operations** - Support for CPU-intensive operations with process pools and parallel execution
 - **Multi-tool Coordination** - Claude Code orchestrates multiple tools in complex workflows
 - **Production Ready** - Build scalable agents using Claude Code's capabilities with custom tool integration
@@ -16,7 +16,7 @@ A Python framework for building Claude Code agents with custom tools, designed t
 ### Core Components
 
 - **Agent Framework** (`src/claude_agent_toolkit/agent/`) - Docker-isolated Agent class that runs Claude Code with MCP tool support
-- **MCP Tool Framework** (`src/claude_agent_toolkit/tool/`) - BaseTool class for creating custom MCP tools with state management
+- **MCP Tool Framework** (`src/claude_agent_toolkit/tool/`) - BaseTool class for creating custom MCP tools with explicit data management
 - **Example Tools** (`src/examples/`) - Demonstration tools showing practical agent development patterns
 - **Docker Environment** (`src/docker/`) - Isolated environment with Claude Code CLI and dependencies
 
@@ -81,9 +81,10 @@ class MyTool(BaseTool):
         self.state["counter"] += 1
         return {"value": self.state["counter"]}
     
-    @tool(description="Heavy computation", cpu_bound=True)  
+    @tool(description="Heavy computation", parallel=True)  
     def compute_heavy(self, data: str) -> dict:
-        # CPU-intensive operation runs in process pool
+        # CPU-intensive operation runs under ProcessPoolExecutor
+        # CRITICAL: Use semaphores or atomic datatypes if sharing data
         import time
         time.sleep(2)  # Simulate heavy computation
         return {"processed": f"Heavy result for {data}"}
@@ -225,7 +226,7 @@ class BaseTool:
     def __init__(self)
     def run(self, host="127.0.0.1", port=None, *, workers=None) -> 'BaseTool'
     @property def connection_url(self) -> str
-    @property def state(self) -> Any  # Mutable state dictionary
+    @property def health_url(self) -> str
 ```
 
 ### @tool() Decorator
@@ -234,10 +235,8 @@ class BaseTool:
 @tool(
     name: Optional[str] = None,           # Tool method name
     description: str = "",               # Method description  
-    cpu_bound: bool = False,             # Use process pool
-    timeout_s: int = 60,                 # Timeout for CPU-bound operations
-    conflict_policy: str = "retry",      # How to handle state conflicts
-    max_retries: int = 16                # Max retry attempts
+    parallel: bool = False,              # Use process pool
+    timeout_s: int = 60,                 # Timeout for parallel operations
 )
 ```
 
@@ -252,23 +251,20 @@ from claude_agent_toolkit import (
     ConfigurationError,   # Missing OAuth tokens, invalid configuration
     ConnectionError,      # Docker, network, port binding failures  
     ExecutionError,       # Agent execution, tool failures, timeouts
-    StateError           # Tool lifecycle, state management issues
 )
 
 # Exception hierarchy
 ClaudeAgentError
 ├── ConfigurationError    # Configuration issues
 ├── ConnectionError       # Network/service connectivity
-├── ExecutionError       # Runtime execution failures
-└── StateError          # State management problems
+└── ExecutionError       # Runtime execution failures
 ```
 
 **When to catch each exception:**
 
 - **ConfigurationError**: Handle setup issues, missing tokens, invalid configs
 - **ConnectionError**: Handle Docker, network, and port binding failures
-- **ExecutionError**: Handle runtime failures, timeouts, tool execution issues  
-- **StateError**: Handle tool lifecycle violations, state conflicts
+- **ExecutionError**: Handle runtime failures, timeouts, tool execution issues
 - **ClaudeAgentError**: Catch all library errors with a single handler
 
 ## Development Workflow
@@ -296,7 +292,7 @@ Use your Claude Code subscription to run agents at scale with custom tool integr
 - `docker>=7.1.0` - Docker container management
 - `fastmcp>=2.11.3` - MCP server framework
 - `httpx>=0.28.1` - HTTP client for health checks
-- `jsonpatch>=1.33` - State management with JSON patches  
+  
 - `uvicorn>=0.35.0` - ASGI server for MCP HTTP endpoints
 
 ### Docker Environment  
@@ -335,9 +331,6 @@ except ExecutionError as e:
     print(f"Execution failed: {e}")
     # Handle agent execution, tool failures, timeouts
     
-except StateError as e:
-    print(f"State management issue: {e}")
-    # Handle tool lifecycle, state conflicts
     
 except ClaudeAgentError as e:
     print(f"Library error: {e}")
@@ -371,7 +364,7 @@ tool = MyTool().run()  # Auto-selects port
 tool = MyTool().run(port=9000)
 ```
 
-**StateError: "Tool is not running"**
+**ConnectionError: "Tool is not running"**
 ```python
 # Start tool before accessing properties
 tool = MyTool()
@@ -381,10 +374,11 @@ url = tool.connection_url  # Now accessible
 
 **ExecutionError: "Operation timed out"**
 ```python
-# Increase timeout for CPU-bound operations
-@tool(cpu_bound=True, timeout_s=300)  # 5 minute timeout
-async def heavy_computation(self):
-    pass
+# Increase timeout for parallel operations
+@tool(parallel=True, timeout_s=300)  # 5 minute timeout
+def heavy_computation(self, data: str) -> dict:
+    # Parallel operations must be sync functions
+    return {"result": "processed"}
 ```
 
 ### Debug Mode

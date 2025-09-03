@@ -21,6 +21,3 @@ class ExecutionError(ClaudeAgentError):
     pass
 
 
-class StateError(ClaudeAgentError):
-    """Raised when state management operations fail."""
-    pass

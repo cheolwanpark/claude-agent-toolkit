@@ -1,20 +1,18 @@
 #!/usr/bin/env python3
 # decorator.py - MCP tool method decorator
 
-from typing import Callable, List, Optional
+import asyncio
+from typing import Callable, Optional
+
+from ..exceptions import ConfigurationError
 
 
 def tool(
     name: Optional[str] = None,
     description: str = "",
     *,
-    cpu_bound: bool = False,
+    parallel: bool = False,
     timeout_s: int = 60,
-    snapshot: Optional[List[str]] = None,
-    conflict_policy: str = "retry",       # "retry" | "error"
-    max_retries: int = 16,                # transparent retries on conflict
-    backoff_initial_ms: int = 5,          # exp backoff start
-    backoff_max_ms: int = 250,            # cap
 ):
     """
     Decorator to mark methods as MCP tools.
@@ -22,26 +20,35 @@ def tool(
     Args:
         name: Tool name (defaults to function name)
         description: Tool description for MCP
-        cpu_bound: Whether the tool is CPU-intensive
-        timeout_s: Timeout in seconds for CPU-bound operations
-        snapshot: List of config fields to snapshot for CPU-bound operations
-        conflict_policy: How to handle state conflicts ("retry" or "error")
-        max_retries: Maximum retry attempts for conflicts
-        backoff_initial_ms: Initial backoff delay in milliseconds
-        backoff_max_ms: Maximum backoff delay in milliseconds
+        parallel: Whether the tool runs in a separate process (must be sync function)
+        timeout_s: Timeout in seconds for parallel operations
+        
+    Validation Rules:
+        - parallel=True requires sync function (def, not async def)
+        - parallel=False requires async function (async def)
     """
     def deco(fn: Callable):
+        # Validate async/parallel combinations
+        is_async = asyncio.iscoroutinefunction(fn)
+        
+        if parallel and is_async:
+            raise ConfigurationError(
+                f"Tool '{name or fn.__name__}' cannot use parallel=True with async functions. "
+                "Use parallel=True with sync functions or parallel=False with async functions."
+            )
+        
+        if not parallel and not is_async:
+            raise ConfigurationError(
+                f"Tool '{name or fn.__name__}' requires async function when parallel=False. "
+                "Use 'async def' or set parallel=True for sync functions."
+            )
+        
         setattr(fn, "__mcp_tool__", True)
         setattr(fn, "__mcp_meta__", {
             "name": name or fn.__name__,
             "description": description,
-            "cpu_bound": cpu_bound,
+            "parallel": parallel,
             "timeout_s": timeout_s,
-            "snapshot": snapshot or [],
-            "conflict_policy": conflict_policy,
-            "max_retries": max_retries,
-            "backoff_initial_ms": backoff_initial_ms,
-            "backoff_max_ms": backoff_max_ms,
         })
         return fn
     return deco

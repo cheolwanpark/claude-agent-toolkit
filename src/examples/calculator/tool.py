@@ -9,34 +9,30 @@ from claude_agent_toolkit import BaseTool, tool
 
 
 class CalculatorTool(BaseTool):
-    """A comprehensive calculator tool with operation history and state management."""
+    """A comprehensive calculator tool with operation history. Users manage data explicitly."""
     
     def __init__(self):
         super().__init__()
-        self.state = {
-            "history": [],
-            "last_result": None,
-            "operation_count": 0
-        }
+        # Explicit data management - no automatic state management
+        self.history = []
+        self.last_result = None
+        self.operation_count = 0
     
     def _record_operation(self, operation: str, result: Union[int, float]) -> None:
         """Record an operation in the history."""
-        self.state["operation_count"] += 1
-        self.state["last_result"] = result
-        self.state["history"].append({
-            "id": self.state["operation_count"],
+        self.operation_count += 1
+        self.last_result = result
+        self.history.append({
+            "id": self.operation_count,
             "operation": operation,
             "result": result,
             "timestamp": datetime.now().isoformat()
         })
         # Keep only last 50 operations
-        if len(self.state["history"]) > 50:
-            self.state["history"] = self.state["history"][-50:]
+        if len(self.history) > 50:
+            self.history = self.history[-50:]
     
-    @tool(
-        description="Add two numbers together",
-        cpu_bound=False
-    )
+    @tool(description="Add two numbers together")
     async def add(self, a: float, b: float) -> Dict[str, Any]:
         """Add two numbers and return the result."""
         result = a + b
@@ -51,10 +47,7 @@ class CalculatorTool(BaseTool):
             "message": f"Added {a} and {b} to get {result}"
         }
     
-    @tool(
-        description="Subtract the second number from the first number",
-        cpu_bound=False
-    )
+    @tool(description="Subtract the second number from the first number")
     async def subtract(self, a: float, b: float) -> Dict[str, Any]:
         """Subtract b from a and return the result."""
         result = a - b
@@ -69,10 +62,7 @@ class CalculatorTool(BaseTool):
             "message": f"Subtracted {b} from {a} to get {result}"
         }
     
-    @tool(
-        description="Multiply two numbers together",
-        cpu_bound=False
-    )
+    @tool(description="Multiply two numbers together")
     async def multiply(self, a: float, b: float) -> Dict[str, Any]:
         """Multiply two numbers and return the result."""
         result = a * b
@@ -87,10 +77,7 @@ class CalculatorTool(BaseTool):
             "message": f"Multiplied {a} and {b} to get {result}"
         }
     
-    @tool(
-        description="Divide the first number by the second number",
-        cpu_bound=False
-    )
+    @tool(description="Divide the first number by the second number")
     async def divide(self, a: float, b: float) -> Dict[str, Any]:
         """Divide a by b and return the result."""
         if b == 0:
@@ -112,10 +99,7 @@ class CalculatorTool(BaseTool):
             "message": f"Divided {a} by {b} to get {result}"
         }
     
-    @tool(
-        description="Raise the first number to the power of the second number",
-        cpu_bound=False
-    )
+    @tool(description="Raise the first number to the power of the second number")
     async def power(self, base: float, exponent: float) -> Dict[str, Any]:
         """Raise base to the power of exponent."""
         result = base ** exponent
@@ -130,10 +114,7 @@ class CalculatorTool(BaseTool):
             "message": f"Raised {base} to the power of {exponent} to get {result}"
         }
     
-    @tool(
-        description="Calculate the square root of a number",
-        cpu_bound=False
-    )
+    @tool(description="Calculate the square root of a number")
     async def square_root(self, number: float) -> Dict[str, Any]:
         """Calculate the square root of a number."""
         if number < 0:
@@ -155,48 +136,37 @@ class CalculatorTool(BaseTool):
             "message": f"Square root of {number} is {result}"
         }
     
-    @tool(
-        description="Get the last calculation result",
-        cpu_bound=False
-    )
+    @tool(description="Get the last calculation result")
     async def get_last_result(self) -> Dict[str, Any]:
         """Get the result of the last calculation."""
         return {
-            "last_result": self.state["last_result"],
-            "operation_count": self.state["operation_count"],
-            "message": f"Last result: {self.state['last_result']}"
+            "last_result": self.last_result,
+            "operation_count": self.operation_count,
+            "message": f"Last result: {self.last_result}"
         }
     
-    @tool(
-        description="Get the calculation history",
-        cpu_bound=False
-    )
+    @tool(description="Get the calculation history")
     async def get_history(self, limit: int = 10) -> Dict[str, Any]:
         """Get the recent calculation history."""
-        recent_history = self.state["history"][-limit:] if self.state["history"] else []
+        recent_history = self.history[-limit:] if self.history else []
         
         return {
             "history": recent_history,
-            "total_operations": self.state["operation_count"],
+            "total_operations": self.operation_count,
             "limit": limit,
             "message": f"Retrieved last {len(recent_history)} operations from history"
         }
     
-    @tool(
-        description="Clear the calculation history and reset state",
-        cpu_bound=False
-    )
+    @tool(description="Clear the calculation history and reset data")
     async def clear_history(self) -> Dict[str, Any]:
-        """Clear all calculation history and reset state."""
-        self.state = {
-            "history": [],
-            "last_result": None,
-            "operation_count": 0
-        }
+        """Clear all calculation history and reset data."""
+        self.history = []
+        self.last_result = None
+        self.operation_count = 0
         
         print(f"\n🧮 [Calculator] History cleared\n")
         
         return {
-            "message": "Calculator history has been cleared and state reset",
+            "message": "Calculator history has been cleared and data reset",
             "cleared": True
         }
