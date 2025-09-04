@@ -51,16 +51,16 @@ export CLAUDE_CODE_OAUTH_TOKEN='your-token-here'
 git clone https://github.com/cheolwanpark/claude-agent-toolkit.git
 cd claude-agent-toolkit
 
-# Start Docker Desktop first, then run the verification demo
-# Run calculator example:
+# Start Docker Desktop first, then run the examples
+# Calculator example (now includes parallel operations):
 cd src/examples/calculator && python main.py
-# Run weather example:
+# Weather example:
 cd src/examples/weather && python main.py
 ```
 
 This will run demonstration examples:
-1. **Calculator Demo** - Shows stateful mathematical operations and problem solving
-2. **Weather Demo** - Demonstrates external API integration with real-time data
+1. **Calculator Demo** - Shows stateful operations, parallel processing (factorial, fibonacci, prime checking), and mathematical problem solving
+2. **Weather Demo** - Demonstrates external API integration with real-time data and async operations
 
 ## Tool Development
 
@@ -74,20 +74,22 @@ from claude_agent_toolkit import BaseTool, tool
 class MyTool(BaseTool):
     def __init__(self):
         super().__init__()
-        self.state = {"counter": 0}
+        # Explicit data management - no automatic state management
+        self.counter = 0
+        self.operations = []
     
     @tool(description="Increment counter and return new value")
     async def increment(self) -> dict:
-        self.state["counter"] += 1
-        return {"value": self.state["counter"]}
+        self.counter += 1
+        return {"value": self.counter}
     
-    @tool(description="Heavy computation", parallel=True)  
+    @tool(description="Heavy computation with parallel processing", parallel=True, timeout_s=120)  
     def compute_heavy(self, data: str) -> dict:
         # CPU-intensive operation runs under ProcessPoolExecutor
-        # CRITICAL: Use semaphores or atomic datatypes if sharing data
+        # Note: ProcessPoolExecutor creates new instance, self.counter won't persist
         import time
         time.sleep(2)  # Simulate heavy computation
-        return {"processed": f"Heavy result for {data}"}
+        return {"processed": f"Heavy result for {data}", "parallel_execution": True}
 ```
 
 ### Using Tools with Agents
@@ -118,7 +120,8 @@ try:
     print(f"Response: {result['response']}")
 
     # Verify tool was actually called
-    print(f"Tool state: {my_tool.state}")
+    print(f"Counter value: {my_tool.counter}")
+    print(f"Operations count: {len(my_tool.operations)}")
     
 except ConnectionError as e:
     print(f"Connection issue: {e}")
@@ -308,7 +311,7 @@ Claude Agent Toolkit uses specific exception types to help you handle errors gra
 from claude_agent_toolkit import (
     Agent, BaseTool, tool,
     ClaudeAgentError, ConfigurationError, ConnectionError,
-    ExecutionError, StateError
+    ExecutionError
 )
 
 # Handle specific error types

@@ -99,13 +99,12 @@ async def run_calculator_demo():
         response = result.get('response', '')
         print(f"Response: {response[:1000]}...")
         
-        # Verify that calculations were actually performed by checking tool state
-        tool_state = calculator_tool.state
-        operation_count = tool_state.get("operation_count", 0)
+        # Verify that calculations were actually performed by checking tool instance
+        operation_count = calculator_tool.operation_count
         
         if operation_count > 0:
             print(f"\n✅ SUCCESS: Calculator tool was used {operation_count} times")
-            print(f"Last result: {tool_state.get('last_result')}")
+            print(f"Last result: {calculator_tool.last_result}")
             return True
         else:
             print(f"\n❌ FAILURE: Calculator tool was not used")
