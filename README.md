@@ -73,7 +73,7 @@ from claude_agent_toolkit import BaseTool, tool
 
 class MyTool(BaseTool):
     def __init__(self):
-        super().__init__()
+        super().__init__()  # Server starts automatically
         # Explicit data management - no automatic state management
         self.counter = 0
         self.operations = []
@@ -92,14 +92,39 @@ class MyTool(BaseTool):
         return {"processed": f"Heavy result for {data}", "parallel_execution": True}
 ```
 
+### Context Manager Support
+
+For explicit resource management, use the context manager pattern:
+
+```python
+# Single tool with guaranteed cleanup
+with MyTool(workers=2) as tool:
+    agent = Agent(tools=[tool])
+    result = await agent.run("Process my data")
+# Server automatically cleaned up here
+
+# Multiple tools in one statement
+with MyTool() as calc_tool, WeatherTool() as weather_tool:
+    agent = Agent(tools=[calc_tool, weather_tool])
+    result = await agent.run("Calculate something and check weather")
+# Both tools cleaned up automatically
+
+# Parameters can be passed to constructor
+with MyTool(host="127.0.0.1", port=8080, workers=4, log_level="INFO") as tool:
+    # Tool server starts immediately with specified configuration
+    agent = Agent(tools=[tool])
+    result = await agent.run("Heavy computation task")
+# Guaranteed cleanup even if exceptions occur
+```
+
 ### Using Tools with Agents
 
 ```python
 from claude_agent_toolkit import Agent, ConnectionError, ExecutionError
 
 try:
-    # Create and start tool
-    my_tool = MyTool().run(workers=2)
+    # Create tool (server starts automatically)
+    my_tool = MyTool(workers=2)
 
     # New pattern (recommended) - cleaner initialization
     agent = Agent(
@@ -226,10 +251,12 @@ class Agent:
 
 ```python
 class BaseTool:
-    def __init__(self)
-    def run(self, host="127.0.0.1", port=None, *, workers=None) -> 'BaseTool'
-    @property def connection_url(self) -> str
-    @property def health_url(self) -> str
+    def __init__(self, host="127.0.0.1", port=None, *, workers=None, log_level="ERROR")
+    @property def connection_url(self) -> str  # Always accessible after construction
+    @property def health_url(self) -> str      # Always accessible after construction
+    def __enter__(self) -> 'BaseTool'          # Context manager support
+    def __exit__(self, exc_type, exc_val, exc_tb) -> bool
+    def __del__(self)                          # Automatic cleanup on destruction
 ```
 
 ### @tool() Decorator
@@ -318,7 +345,7 @@ from claude_agent_toolkit import (
 try:
     agent = Agent(
         oauth_token="your-token",
-        tools=[MyTool().run()]
+        tools=[MyTool()]
     )
     result = await agent.run("Process my request")
     
@@ -361,18 +388,17 @@ agent = Agent(oauth_token='your-token-here')
 **ConnectionError: "Port binding failed"**
 ```python
 # Let tools auto-select available ports
-tool = MyTool().run()  # Auto-selects port
+tool = MyTool()  # Auto-selects port
 
 # Or specify different port
-tool = MyTool().run(port=9000)
+tool = MyTool(port=9000)
 ```
 
-**ConnectionError: "Tool is not running"**
+**ConnectionError: "Tool server failed to start"**
 ```python
-# Start tool before accessing properties
-tool = MyTool()
-tool.run()  # Start the tool
-url = tool.connection_url  # Now accessible
+# Tool server starts automatically in constructor
+tool = MyTool()  # Server starts immediately
+url = tool.connection_url  # Always accessible after construction
 ```
 
 **ExecutionError: "Operation timed out"**

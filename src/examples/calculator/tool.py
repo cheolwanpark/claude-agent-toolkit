@@ -12,7 +12,7 @@ class CalculatorTool(BaseTool):
     """A comprehensive calculator tool with operation history. Users manage data explicitly."""
     
     def __init__(self):
-        super().__init__()
+        super().__init__(workers=2)
         # Explicit data management - no automatic state management
         self.history = []
         self.last_result = None

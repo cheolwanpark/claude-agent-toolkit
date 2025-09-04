@@ -563,8 +563,7 @@ class BaseTool:
 - `health_url`: Health check endpoint URL
 
 **Methods:**
-- `run()`: Start the MCP server (called automatically)
-- `cleanup()`: Stop server and cleanup resources
+- `__del__()`: Automatically cleanup server resources when tool is destroyed
 
 ### @tool Decorator (`claude_agent_toolkit.tool.tool`)
 
@@ -716,7 +715,7 @@ try:
     agent = Agent(
         oauth_token="your-token",
         system_prompt="You are a helpful assistant",
-        tools=[MyTool().run()]
+        tools=[MyTool()]
     )
     result = await agent.run("Process my data")
     
@@ -779,11 +778,11 @@ except ConnectionError as e:
         
 # Port binding issues  
 try:
-    tool = MyTool().run(port=8000)
+    tool = MyTool(port=8000)
 except ConnectionError as e:
     if "bind" in str(e):
         # Port 8000 already in use - let tool auto-select
-        tool = MyTool().run()  # Auto-selects available port
+        tool = MyTool()  # Auto-selects available port
 ```
 
 #### 3. ExecutionError - Runtime Failures  
@@ -804,14 +803,14 @@ except ExecutionError as e:
 
 #### 4. StateError - Data Management Issues
 ```python
-# Tool lifecycle violations
+# Tool lifecycle is now automatic
 try:
-    tool = MyTool()
-    url = tool.connection_url  # Tool not started yet
+    tool = MyTool()  # Server starts automatically
+    url = tool.connection_url  # Always accessible after construction
 except ConnectionError as e:
-    print("Start tool first:")
-    tool = MyTool().run()
-    url = tool.connection_url  # Now works
+    print("Tool server failed to start:")
+    print(f"Error: {e}")
+    # Check Docker status and port availability
 
 # State conflicts  
 @tool(conflict_policy="retry", max_retries=5)
@@ -848,8 +847,7 @@ set_logging(LogLevel.DEBUG, show_time=True, show_level=True)
 result = await agent.run("your prompt", verbose=True)
 
 # Check tool server health
-tool = MyTool()
-tool.run()  # Start server
+tool = MyTool()  # Server starts automatically
 # Visit http://localhost:{port}/health in browser
 
 # Example debug output:

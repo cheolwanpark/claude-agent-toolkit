@@ -33,7 +33,7 @@ async def run_weather_demo():
     
     try:
         # Start the weather tool
-        weather_tool = WeatherTool().run(workers=2)
+        weather_tool = WeatherTool()
         
         # Create agent with new pattern (system prompt + tools)
         agent = Agent(
@@ -169,7 +169,7 @@ async def run_interactive_mode():
     
     try:
         # Start the weather tool
-        weather_tool = WeatherTool().run(workers=2)
+        weather_tool = WeatherTool(workers=2)
         
         # Create agent with system prompt for interactive mode
         agent = Agent(

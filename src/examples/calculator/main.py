@@ -33,7 +33,7 @@ async def run_calculator_demo():
     
     try:
         # Start the calculator tool
-        calculator_tool = CalculatorTool().run(workers=2)
+        calculator_tool = CalculatorTool()
         
         # Create agent with new pattern (system prompt + tools)
         agent = Agent(
@@ -150,7 +150,7 @@ async def run_interactive_mode():
     
     try:
         # Start the calculator tool
-        calculator_tool = CalculatorTool().run(workers=2)
+        calculator_tool = CalculatorTool(workers=2)
         
         # Create agent with system prompt for interactive mode
         agent = Agent(
