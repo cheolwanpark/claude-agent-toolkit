@@ -10,12 +10,7 @@ from claude_code_sdk import (
     TextBlock, ThinkingBlock, ToolUseBlock, ToolResultBlock
 )
 
-# Model ID mappings (short aliases to full model IDs)
-MODEL_ID_MAPPING = {
-    "opus": "claude-opus-4-1-20250805",
-    "sonnet": "claude-sonnet-4-20250514",
-    "haiku": "claude-3-5-haiku-20241022"
-}
+# Model ID mappings removed - now handled in executor.py
 
 
 async def main():
@@ -27,33 +22,21 @@ async def main():
     oauth_token = os.environ.get('CLAUDE_CODE_OAUTH_TOKEN', '')
     system_prompt = os.environ.get('AGENT_SYSTEM_PROMPT')
     verbose = os.environ.get('AGENT_VERBOSE', '0') == '1'
-    model = os.environ.get('ANTHROPIC_MODEL', 'sonnet')
-    
-    # Apply model ID mapping if needed
-    if model in MODEL_ID_MAPPING:
-        model = MODEL_ID_MAPPING[model]
+    model = os.environ.get('ANTHROPIC_MODEL', None)
     
     if not prompt:
-        print(json.dumps({
-            "success": False,
-            "response": "No prompt provided",
-            "error": "AGENT_PROMPT environment variable is empty"
-        }))
+        print("ERROR: No prompt provided - AGENT_PROMPT environment variable is empty", file=sys.stderr, flush=True)
         return
     
     if not oauth_token:
-        print(json.dumps({
-            "success": False,
-            "response": "No OAuth token provided",
-            "error": "CLAUDE_CODE_OAUTH_TOKEN environment variable is empty"
-        }))
+        print("ERROR: No OAuth token provided - CLAUDE_CODE_OAUTH_TOKEN environment variable is empty", file=sys.stderr, flush=True)
         return
     
     # Parse tools configuration
     try:
         tool_urls = json.loads(tools_json)
     except json.JSONDecodeError as e:
-        print(f"[entrypoint] Warning: Invalid JSON in MCP_TOOLS: {e}", flush=True)
+        print(f"[entrypoint] Warning: Invalid JSON in MCP_TOOLS: {e}", file=sys.stderr, flush=True)
         tool_urls = {}
     
     # Configure MCP servers using HTTP configuration
@@ -67,7 +50,7 @@ async def main():
                 "url": tool_url,
                 "headers": {}  # Add any necessary headers here
             }
-            print(f"[entrypoint] Configured HTTP MCP server {tool_name} at {tool_url}", flush=True)
+            print(f"[entrypoint] Configured HTTP MCP server {tool_name} at {tool_url}", file=sys.stderr, flush=True)
             
             # Test connectivity to MCP server
             try:
@@ -75,18 +58,18 @@ async def main():
                 with httpx.Client(timeout=5.0) as client:
                     health_url = tool_url.replace('/mcp', '/health')
                     response = client.get(health_url)
-                    print(f"[entrypoint] Health check for {tool_name}: {response.status_code}", flush=True)
+                    print(f"[entrypoint] Health check for {tool_name}: {response.status_code}", file=sys.stderr, flush=True)
             except httpx.TimeoutException:
-                print(f"[entrypoint] Health check timeout for {tool_name}", flush=True)
+                print(f"[entrypoint] Health check timeout for {tool_name}", file=sys.stderr, flush=True)
             except httpx.RequestError as e:
-                print(f"[entrypoint] Health check connection error for {tool_name}: {e}", flush=True)
+                print(f"[entrypoint] Health check connection error for {tool_name}: {e}", file=sys.stderr, flush=True)
             except Exception as e:
-                print(f"[entrypoint] Health check failed for {tool_name}: {e}", flush=True)
+                print(f"[entrypoint] Health check failed for {tool_name}: {e}", file=sys.stderr, flush=True)
     
     # Setup Claude Code options with proper MCP configuration
-    print(f"[entrypoint] MCP servers config: {json.dumps(mcp_servers, indent=2)}", flush=True)
-    print(f"[entrypoint] Tool URLs: {json.dumps(tool_urls, indent=2)}", flush=True)
-    print(f"[entrypoint] Using model: {model}", flush=True)
+    print(f"[entrypoint] MCP servers config: {json.dumps(mcp_servers, indent=2)}", file=sys.stderr, flush=True)
+    print(f"[entrypoint] Tool URLs: {json.dumps(tool_urls, indent=2)}", file=sys.stderr, flush=True)
+    print(f"[entrypoint] Using model: {model}", file=sys.stderr, flush=True)
     
     options = ClaudeCodeOptions(
         permission_mode="bypassPermissions",
@@ -95,105 +78,76 @@ async def main():
         model=model
     )
     
-    print(f"[entrypoint] Claude Code options - allowed_tools: {options.allowed_tools}", flush=True)
-    print(f"[entrypoint] Claude Code options - mcp_servers: {len(options.mcp_servers)} servers", flush=True)
+    print(f"[entrypoint] Claude Code options - allowed_tools: {options.allowed_tools}", file=sys.stderr, flush=True)
+    print(f"[entrypoint] Claude Code options - mcp_servers: {len(options.mcp_servers)} servers", file=sys.stderr, flush=True)
     
-    # Initialize collectors
-    assistant_responses = []  # For final response text
-    result_metadata = None
-    error = None
-    final_result = None
+    def serialize_message(message):
+        """Convert a claude-code-sdk message to a serializable dict."""
+        message_dict = {
+            "type": type(message).__name__
+        }
+        
+        # Add common fields
+        if hasattr(message, 'content'):
+            if isinstance(message.content, str):
+                message_dict["content"] = message.content
+            else:
+                # Handle list of blocks
+                content_list = []
+                for block in message.content:
+                    block_dict = {"type": type(block).__name__}
+                    
+                    if hasattr(block, 'text'):
+                        block_dict["text"] = block.text
+                    if hasattr(block, 'thinking'):
+                        block_dict["thinking"] = block.thinking
+                    if hasattr(block, 'name'):
+                        block_dict["name"] = block.name
+                    if hasattr(block, 'id'):
+                        block_dict["id"] = block.id
+                    if hasattr(block, 'input'):
+                        block_dict["input"] = block.input
+                    if hasattr(block, 'tool_use_id'):
+                        block_dict["tool_use_id"] = block.tool_use_id
+                    if hasattr(block, 'content'):
+                        block_dict["content"] = block.content
+                    if hasattr(block, 'is_error'):
+                        block_dict["is_error"] = block.is_error
+                        
+                    content_list.append(block_dict)
+                message_dict["content"] = content_list
+        
+        if hasattr(message, 'model'):
+            message_dict["model"] = message.model
+        if hasattr(message, 'subtype'):
+            message_dict["subtype"] = message.subtype
+        if hasattr(message, 'result'):
+            message_dict["result"] = message.result
+        if hasattr(message, 'duration_ms'):
+            message_dict["duration_ms"] = message.duration_ms
+        if hasattr(message, 'total_cost_usd'):
+            message_dict["total_cost_usd"] = message.total_cost_usd
+        if hasattr(message, 'usage'):
+            message_dict["usage"] = message.usage
+        if hasattr(message, 'is_error'):
+            message_dict["is_error"] = message.is_error
+        if hasattr(message, 'num_turns'):
+            message_dict["num_turns"] = message.num_turns
+            
+        return message_dict
     
     try:
-        print(f"[entrypoint] Starting Claude Code query with {len(mcp_servers)} MCP servers...", flush=True)
+        print(f"[entrypoint] Starting Claude Code query with {len(mcp_servers)} MCP servers...", file=sys.stderr, flush=True)
         
-        message_count = 0
         async for message in query(prompt=prompt, options=options):
-            message_count += 1
-            if verbose:
-                print(f"[entrypoint] Received message #{message_count}: {type(message).__name__}", flush=True)
-            
-            # Handle UserMessage (may contain ToolResultBlock)
-            if isinstance(message, UserMessage):
-                if verbose:
-                    print(f"[User Message]", flush=True)
-                    if isinstance(message.content, str):
-                        print(f"  Content: {message.content[:200]}...", flush=True)
-                    else:
-                        for block in message.content:
-                            if isinstance(block, ToolResultBlock):
-                                content_preview = block.content[:100] if block.content else 'None'
-                                print(f"  ToolResult: {block.tool_use_id} -> {content_preview}...", flush=True)
-            
-            # Handle AssistantMessage with ALL block types
-            elif isinstance(message, AssistantMessage):
-                if verbose:
-                    print(f"[Assistant Message] Model: {message.model}", flush=True)
-                
-                for block in message.content:
-                    if isinstance(block, TextBlock):
-                        assistant_responses.append(block.text)
-                        if verbose:
-                            print(f"  TextBlock: {block.text[:200]}...", flush=True)
-                    
-                    elif isinstance(block, ThinkingBlock):
-                        if verbose:
-                            print(f"  ThinkingBlock: {block.thinking[:200]}...", flush=True)
-                    
-                    elif isinstance(block, ToolUseBlock):
-                        if verbose:
-                            print(f"  ToolUse: {block.name}({block.id}) with {list(block.input.keys())}", flush=True)
-                    
-                    elif isinstance(block, ToolResultBlock):
-                        if verbose:
-                            status = "ERROR" if block.is_error else "OK"
-                            print(f"  ToolResult[{status}]: {block.tool_use_id}", flush=True)
-            
-            # Handle ResultMessage for metadata
-            elif isinstance(message, ResultMessage):
-                result_metadata = {
-                    "duration_ms": message.duration_ms,
-                    "total_cost_usd": message.total_cost_usd,
-                    "usage": message.usage,
-                    "is_error": message.is_error,
-                    "num_turns": message.num_turns
-                }
-                # Use ResultMessage.result if available
-                if message.result:
-                    final_result = message.result
-                
-                if verbose:
-                    cost = message.total_cost_usd or 0
-                    print(f"[Result Message] Duration: {message.duration_ms}ms, Cost: ${cost:.4f}", flush=True)
-            
-            # Handle SystemMessage
-            elif isinstance(message, SystemMessage):
-                if verbose:
-                    print(f"[System Message] Type: {message.subtype}", flush=True)
+            # Serialize and output each message as JSON to stdout
+            message_dict = serialize_message(message)
+            print(json.dumps(message_dict), flush=True)
             
     except Exception as e:
-        error = str(e)
-        print(f"[entrypoint] Error during execution: {e}", flush=True)
+        print(f"ERROR: {str(e)}", file=sys.stderr, flush=True)
         import traceback
-        traceback.print_exc()
-    
-    # Prepare final output
-    if final_result:
-        response_text = final_result
-    elif assistant_responses:
-        response_text = "\n".join(assistant_responses)
-    else:
-        response_text = "No response generated"
-    
-    output = {
-        "success": error is None and (final_result or len(assistant_responses) > 0),
-        "response": response_text,
-        "metadata": result_metadata,
-        "error": error
-    }
-    
-    # Output final JSON result (this is what the agent will parse)
-    print(json.dumps(output))
+        traceback.print_exc(file=sys.stderr)
 
 
 if __name__ == "__main__":

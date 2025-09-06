@@ -51,70 +51,80 @@ async def run_weather_demo():
         
         # Demo 1: Current weather for a major city
         print(f"\n🌤️  Demo 1: Current Weather Conditions")
-        result = await agent.run(
-            "Please get the current weather conditions for Tokyo, Japan. "
-            "Provide comprehensive information including temperature, humidity, wind, "
-            "and practical advice about what to expect.",
-            verbose=True
-        )
-        
-        print(f"\n[Agent Response - Demo 1]:")
-        print(f"Success: {result.get('success')}")
-        response = result.get('response', '')
-        print(f"Response: {response[:1000]}...")
+        try:
+            response = await agent.run(
+                "Please get the current weather conditions for Tokyo, Japan. "
+                "Provide comprehensive information including temperature, humidity, wind, "
+                "and practical advice about what to expect.",
+                verbose=True
+            )
+            
+            print(f"\n[Agent Response - Demo 1]:")
+            print(f"Response: {response[:1000]}...")
+        except (ConfigurationError, ConnectionError, ExecutionError) as e:
+            print(f"❌ Error: {e}")
+            return
         
         # Demo 2: Multi-day forecast
         print(f"\n🌦️  Demo 2: Weather Forecast")
-        result = await agent.run(
-            "Now get a 3-day weather forecast for London, England. "
-            "Help me understand what the weather will be like and what I should plan for.",
-            verbose=True
-        )
-        
-        print(f"\n[Agent Response - Demo 2]:")
-        print(f"Success: {result.get('success')}")
-        response = result.get('response', '')
-        print(f"Response: {response[:1000]}...")
+        try:
+            response = await agent.run(
+                "Now get a 3-day weather forecast for London, England. "
+                "Help me understand what the weather will be like and what I should plan for.",
+                verbose=True
+            )
+            
+            print(f"\n[Agent Response - Demo 2]:")
+            print(f"Response: {response[:1000]}...")
+        except (ConfigurationError, ConnectionError, ExecutionError) as e:
+            print(f"❌ Error: {e}")
+            return
         
         # Demo 3: Weather comparison
         print(f"\n🔄 Demo 3: Weather Comparison")
-        result = await agent.run(
-            "Compare the current weather between New York City and Los Angeles. "
-            "Which city has better weather right now and why?",
-            verbose=True
-        )
-        
-        print(f"\n[Agent Response - Demo 3]:")
-        print(f"Success: {result.get('success')}")
-        response = result.get('response', '')
-        print(f"Response: {response[:1000]}...")
+        try:
+            response = await agent.run(
+                "Compare the current weather between New York City and Los Angeles. "
+                "Which city has better weather right now and why?",
+                verbose=True
+            )
+            
+            print(f"\n[Agent Response - Demo 3]:")
+            print(f"Response: {response[:1000]}...")
+        except (ConfigurationError, ConnectionError, ExecutionError) as e:
+            print(f"❌ Error: {e}")
+            return
         
         # Demo 4: Travel weather planning
         print(f"\n✈️ Demo 4: Travel Weather Planning")
-        result = await agent.run(
-            "I'm planning to travel from Paris to Sydney next week. "
-            "Can you help me understand what weather to expect and what to pack? "
-            "Also, add both cities to my favorites list for future reference.",
-            verbose=True
-        )
-        
-        print(f"\n[Agent Response - Demo 4]:")
-        print(f"Success: {result.get('success')}")
-        response = result.get('response', '')
-        print(f"Response: {response[:1200]}...")
+        try:
+            response = await agent.run(
+                "I'm planning to travel from Paris to Sydney next week. "
+                "Can you help me understand what weather to expect and what to pack? "
+                "Also, add both cities to my favorites list for future reference.",
+                verbose=True
+            )
+            
+            print(f"\n[Agent Response - Demo 4]:")
+            print(f"Response: {response[:1200]}...")
+        except (ConfigurationError, ConnectionError, ExecutionError) as e:
+            print(f"❌ Error: {e}")
+            return
         
         # Demo 5: State management - check favorites and history
         print(f"\n📊 Demo 5: State Management")
-        result = await agent.run(
-            "Show me my weather query history and favorite locations. "
-            "What locations have I been checking the weather for?",
-            verbose=True
-        )
-        
-        print(f"\n[Agent Response - Demo 5]:")
-        print(f"Success: {result.get('success')}")
-        response = result.get('response', '')
-        print(f"Response: {response[:800]}...")
+        try:
+            response = await agent.run(
+                "Show me my weather query history and favorite locations. "
+                "What locations have I been checking the weather for?",
+                verbose=True
+            )
+            
+            print(f"\n[Agent Response - Demo 5]:")
+            print(f"Response: {response[:800]}...")
+        except (ConfigurationError, ConnectionError, ExecutionError) as e:
+            print(f"❌ Error: {e}")
+            return
         
         # Verify that weather queries were actually made by checking tool instance
         query_count = weather_tool.query_count
@@ -190,12 +200,11 @@ async def run_interactive_mode():
             if not user_input:
                 continue
             
-            result = await agent.run(f"User question: {user_input}", verbose=True)
-            
-            if result.get('success'):
-                print(f"\n🤖 Weather Assistant: {result.get('response')}")
-            else:
-                print(f"\n❌ Error: {result.get('error', 'Unknown error occurred')}")
+            try:
+                response = await agent.run(f"User question: {user_input}", verbose=True)
+                print(f"\n🤖 Weather Assistant: {response}")
+            except (ConfigurationError, ConnectionError, ExecutionError) as e:
+                print(f"\n❌ Error: {e}")
     
     except ConnectionError as e:
         print(f"\n❌ Connection Error: {e}")

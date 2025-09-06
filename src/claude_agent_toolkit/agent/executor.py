@@ -2,14 +2,16 @@
 # executor.py - Container execution and result parsing
 
 import json
+import sys
 import uuid
 from typing import Any, Dict, Optional
 
 import docker
 
 from ..logging import get_logger
-from ..exceptions import ExecutionError
+from ..exceptions import ConfigurationError, ConnectionError, ExecutionError
 from ..constants import DOCKER_HOST_GATEWAY, CONTAINER_NAME_PREFIX, CONTAINER_UUID_LENGTH
+from .response_handler import ResponseHandler
 
 logger = get_logger('agent')
 
@@ -28,7 +30,7 @@ class ContainerExecutor:
         self.docker_client = docker_client
         self.image_name = image_name
     
-    def execute(self, prompt: str, oauth_token: str, tool_urls: Dict[str, str], system_prompt: Optional[str] = None, verbose: bool = False, model: Optional[str] = None) -> Dict[str, Any]:
+    def execute(self, prompt: str, oauth_token: str, tool_urls: Dict[str, str], system_prompt: Optional[str] = None, verbose: bool = False, model: Optional[str] = None) -> str:
         """
         Execute prompt in Docker container with connected tools.
         
@@ -41,8 +43,15 @@ class ContainerExecutor:
             model: Optional model to use for this execution
             
         Returns:
-            Dict with success status, response, and metadata
+            Response string from Claude
+            
+        Raises:
+            ConfigurationError: If OAuth token or configuration is invalid
+            ConnectionError: If Docker connection fails
+            ExecutionError: If container execution fails
         """
+        from ..constants import MODEL_ID_MAPPING
+        
         logger.info("Running with prompt: %s...", prompt[:100])
         
         # Prepare environment variables
@@ -56,9 +65,11 @@ class ContainerExecutor:
         if system_prompt:
             environment['AGENT_SYSTEM_PROMPT'] = system_prompt
         
-        # Add model if provided
+        # Add model if provided - apply model ID mapping if needed
         if model:
-            environment['ANTHROPIC_MODEL'] = model
+            # Apply model ID mapping if model is a known alias
+            mapped_model = MODEL_ID_MAPPING.get(model, model)
+            environment['ANTHROPIC_MODEL'] = mapped_model
         
         # Add all connected tools as separate environment variables
         if tool_urls:
@@ -66,61 +77,58 @@ class ContainerExecutor:
             environment['MCP_TOOLS'] = json.dumps(tool_urls)
             logger.info("Connected tools: %s", list(tool_urls.keys()))
         
+        if not oauth_token:
+            raise ConfigurationError("OAuth token is required")
+        
         try:
-            # Run container with entrypoint.py
+            # Run container with streaming
             container_name = f"{CONTAINER_NAME_PREFIX}{uuid.uuid4().hex[:CONTAINER_UUID_LENGTH]}"
             
             logger.debug("Starting container %s", container_name)
             
-            result = self.docker_client.containers.run(
+            container = self.docker_client.containers.run(
                 image=self.image_name,
                 name=container_name,
-                command="python /app/entrypoint.py",  # Use the built-in entrypoint
+                command="python /app/entrypoint.py",
                 environment=environment,
                 extra_hosts={'host.docker.internal': DOCKER_HOST_GATEWAY},
-                auto_remove=not verbose,  # Automatically remove container if not verbose mode
                 stdout=True,
                 stderr=True,
-                detach=False
+                stream=True,
+                detach=False,
+                remove=True
             )
             
-            # Parse output
-            output = result.decode('utf-8').strip()
+            handler = ResponseHandler()
             
-            # Find JSON in output (it might have other logs)
-            return self._parse_container_output(output)
+            # Process stream
+            for chunk in container:
+                if chunk:
+                    chunk_text = chunk.decode('utf-8')
+                    for line in chunk_text.splitlines():
+                        result = handler.handle(line, verbose)
+                        if result:
+                            logger.info("Execution completed successfully")
+                            return result  # Return string directly
+                        
+            # If we get here, no ResultMessage was received
+            if handler.text_responses:
+                logger.info("Execution completed with text responses")
+                return '\n'.join(handler.text_responses)
+            else:
+                raise ExecutionError("No response received from Claude")
                 
-        except docker.errors.DockerException as e:
-            logger.error("Docker execution failed: %s", e)
-            raise ExecutionError(f"Agent execution failed due to Docker error: {e}") from e
-        except Exception as e:
-            logger.error("Execution failed: %s", e)
-            raise ExecutionError(f"Agent execution failed: {e}") from e
-    
-    def _parse_container_output(self, output: str) -> Dict[str, Any]:
-        """
-        Parse container output to extract JSON result.
-        
-        Args:
-            output: Raw container output
+        except docker.errors.ContainerError as e:
+            stderr = e.stderr.decode('utf-8') if e.stderr else str(e)
+            logger.error("Container failed: %s", stderr)
+            raise ExecutionError(f"Container failed: {stderr}") from e
             
-        Returns:
-            Parsed result dictionary
-        """
-        lines = output.split('\n')
-        json_output = None
-        
-        for line in reversed(lines):  # Check from the end
-            if line.strip().startswith('{'):
-                try:
-                    json_output = json.loads(line)
-                    break
-                except json.JSONDecodeError:
-                    continue
-        
-        if json_output:
-            logger.info("Execution completed successfully")
-            return json_output
-        else:
-            logger.warning("No valid JSON output found")
-            raise ExecutionError(f"Failed to parse agent output. Raw output: {output or 'No output'}")
+        except docker.errors.DockerException as e:
+            logger.error("Docker connection failed: %s", e)
+            raise ConnectionError(f"Docker connection failed: {e}") from e
+            
+        except Exception as e:
+            if isinstance(e, (ConfigurationError, ConnectionError, ExecutionError)):
+                raise  # Re-raise our exceptions
+            logger.error("Unexpected error: %s", e)
+            raise ExecutionError(f"Unexpected error: {e}") from e

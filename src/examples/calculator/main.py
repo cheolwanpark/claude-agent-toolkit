@@ -50,43 +50,49 @@ async def run_calculator_demo():
         
         # Demo 1: Basic arithmetic
         print(f"\n🧮 Demo 1: Basic Arithmetic Operations")
-        result = await agent.run(
-            "Please calculate: (25 + 75) × 3 - 50. "
-            "Break this down step by step and show your work."
-        )
-        
-        print(f"\n[Agent Response - Demo 1]:")
-        print(f"Success: {result.get('success')}")
-        response = result.get('response', '')
-        print(f"Response: {response[:800]}...")
+        try:
+            response = await agent.run(
+                "Please calculate: (25 + 75) × 3 - 50. "
+                "Break this down step by step and show your work."
+            )
+            
+            print(f"\n[Agent Response - Demo 1]:")
+            print(f"Response: {response[:800]}...")
+        except (ConfigurationError, ConnectionError, ExecutionError) as e:
+            print(f"❌ Error: {e}")
+            return
         
         # Demo 2: Advanced operations
         print(f"\n🧮 Demo 2: Advanced Mathematical Operations")
-        result = await agent.run(
-            "Now calculate the square root of the last result, then raise it to the power of 2.5. "
-            "What do you notice about these operations?"
-        )
-        
-        print(f"\n[Agent Response - Demo 2]:")
-        print(f"Success: {result.get('success')}")
-        response = result.get('response', '')
-        print(f"Response: {response[:800]}...")
+        try:
+            response = await agent.run(
+                "Now calculate the square root of the last result, then raise it to the power of 2.5. "
+                "What do you notice about these operations?"
+            )
+            
+            print(f"\n[Agent Response - Demo 2]:")
+            print(f"Response: {response[:800]}...")
+        except (ConfigurationError, ConnectionError, ExecutionError) as e:
+            print(f"❌ Error: {e}")
+            return
         
         # Demo 3: History and state management
         print(f"\n🧮 Demo 3: History and State Management")
-        result = await agent.run(
-            "Please show me the calculation history from our session, "
-            "then explain what the last result represents mathematically."
-        )
-        
-        print(f"\n[Agent Response - Demo 3]:")
-        print(f"Success: {result.get('success')}")
-        response = result.get('response', '')
-        print(f"Response: {response[:800]}...")
+        try:
+            response = await agent.run(
+                "Please show me the calculation history from our session, "
+                "then explain what the last result represents mathematically."
+            )
+            
+            print(f"\n[Agent Response - Demo 3]:")
+            print(f"Response: {response[:800]}...")
+        except (ConfigurationError, ConnectionError, ExecutionError) as e:
+            print(f"❌ Error: {e}")
+            return
         
         # Demo 4: Complex word problem
         print(f"\n🧮 Demo 4: Complex Problem Solving")
-        result = await agent.run(
+        response = await agent.run(
             "Solve this problem step by step: "
             "A rectangular garden is 15 meters long and 8 meters wide. "
             "If I want to put a fence around it that costs $12 per meter, "
@@ -95,8 +101,6 @@ async def run_calculator_demo():
         )
         
         print(f"\n[Agent Response - Demo 4]:")
-        print(f"Success: {result.get('success')}")
-        response = result.get('response', '')
         print(f"Response: {response[:1000]}...")
         
         # Verify that calculations were actually performed by checking tool instance
@@ -169,12 +173,11 @@ async def run_interactive_mode():
             if not user_input:
                 continue
             
-            result = await agent.run(f"User question: {user_input}")
-            
-            if result.get('success'):
-                print(f"\n🤖 Assistant: {result.get('response')}")
-            else:
-                print(f"\n❌ Error: {result.get('error', 'Unknown error occurred')}")
+            try:
+                response = await agent.run(f"User question: {user_input}")
+                print(f"\n🤖 Assistant: {response}")
+            except (ConfigurationError, ConnectionError, ExecutionError) as e:
+                print(f"\n❌ Error: {e}")
     
     except ConnectionError as e:
         print(f"\n❌ Connection Error: {e}")

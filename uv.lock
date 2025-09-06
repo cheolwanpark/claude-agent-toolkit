@@ -210,6 +210,7 @@ name = "claude-agent-toolkit"
 version = "0.1.2"
 source = { editable = "." }
 dependencies = [
+    { name = "claude-code-sdk" },
     { name = "docker" },
     { name = "fastmcp" },
     { name = "httpx" },
@@ -258,6 +259,7 @@ requires-dist = [
     { name = "black", marker = "extra == 'dev'", specifier = ">=23.0.0" },
     { name = "build", marker = "extra == 'build'", specifier = ">=1.0.0" },
     { name = "check-manifest", marker = "extra == 'build'", specifier = ">=0.49" },
+    { name = "claude-code-sdk", specifier = ">=0.0.21" },
     { name = "docker", specifier = ">=7.1.0" },
     { name = "fastmcp", specifier = ">=2.12.2" },
     { name = "httpx", specifier = ">=0.28.1" },
@@ -285,6 +287,19 @@ provides-extras = ["dev", "docs", "examples", "test", "build"]
 build = [
     { name = "build", specifier = ">=1.3.0" },
     { name = "twine", specifier = ">=6.1.0" },
+]
+
+[[package]]
+name = "claude-code-sdk"
+version = "0.0.21"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "mcp" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5b/51/ed3bdf0e316c6df2938fae41b914d45f7f5e486053aca99e59d452b0c2d7/claude_code_sdk-0.0.21.tar.gz", hash = "sha256:780759353fddb547df1db5df30ea8e5a891f6a8a7b78bd8b52bea9c5f45038ad", size = 36552, upload-time = "2025-09-05T20:39:47.432Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/70/03/1c29bdd0124ae92e256de24071dc3cccb838bb70f535db0614ff6e7b645f/claude_code_sdk-0.0.21-py3-none-any.whl", hash = "sha256:36b6741064959de7782360e7c066d1e45d175675ba7561a657820162fb817db7", size = 27754, upload-time = "2025-09-05T20:39:46.178Z" },
 ]
 
 [[package]]

@@ -91,7 +91,7 @@ class Agent:
         prompt: str, 
         verbose: bool = False,
         model: Optional[Union[Literal["opus", "sonnet", "haiku"], str]] = None
-    ) -> Dict[str, Any]:
+    ) -> str:
         """
         Run the agent with the given prompt.
         
@@ -101,7 +101,12 @@ class Agent:
             model: Model to use for this run (overrides agent default)
             
         Returns:
-            Dict with success status, response, and metadata
+            Response string from Claude
+            
+        Raises:
+            ConfigurationError: If OAuth token or configuration is invalid
+            ConnectionError: If Docker connection fails
+            ExecutionError: If agent execution fails
         """
         return self.executor.execute(
             prompt=prompt,
