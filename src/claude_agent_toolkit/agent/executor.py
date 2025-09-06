@@ -10,7 +10,7 @@ import docker
 
 from ..logging import get_logger
 from ..exceptions import ConfigurationError, ConnectionError, ExecutionError
-from ..constants import DOCKER_HOST_GATEWAY, CONTAINER_NAME_PREFIX, CONTAINER_UUID_LENGTH
+from ..constants import DOCKER_HOST_GATEWAY, CONTAINER_NAME_PREFIX, CONTAINER_UUID_LENGTH, MODEL_ID_MAPPING
 from .response_handler import ResponseHandler
 
 logger = get_logger('agent')
@@ -50,8 +50,6 @@ class ContainerExecutor:
             ConnectionError: If Docker connection fails
             ExecutionError: If container execution fails
         """
-        from ..constants import MODEL_ID_MAPPING
-        
         logger.info("Running with prompt: %s...", prompt[:100])
         
         # Prepare environment variables

@@ -4,11 +4,8 @@
 import asyncio
 import json
 import os
-from claude_code_sdk import (
-    query, ClaudeCodeOptions, 
-    AssistantMessage, UserMessage, SystemMessage, ResultMessage,
-    TextBlock, ThinkingBlock, ToolUseBlock, ToolResultBlock
-)
+import sys
+from claude_code_sdk import query, ClaudeCodeOptions
 
 # Model ID mappings removed - now handled in executor.py
 
@@ -21,7 +18,6 @@ async def main():
     tools_json = os.environ.get('MCP_TOOLS', '{}')
     oauth_token = os.environ.get('CLAUDE_CODE_OAUTH_TOKEN', '')
     system_prompt = os.environ.get('AGENT_SYSTEM_PROMPT')
-    verbose = os.environ.get('AGENT_VERBOSE', '0') == '1'
     model = os.environ.get('ANTHROPIC_MODEL', None)
     
     if not prompt:
@@ -83,58 +79,15 @@ async def main():
     
     def serialize_message(message):
         """Convert a claude-code-sdk message to a serializable dict."""
-        message_dict = {
-            "type": type(message).__name__
-        }
+        def default_serializer(obj):
+            """Custom serializer for objects that aren't JSON serializable by default."""
+            if hasattr(obj, '__dict__'):
+                result = {"type": type(obj).__name__}
+                result.update(obj.__dict__)
+                return result
+            return str(obj)
         
-        # Add common fields
-        if hasattr(message, 'content'):
-            if isinstance(message.content, str):
-                message_dict["content"] = message.content
-            else:
-                # Handle list of blocks
-                content_list = []
-                for block in message.content:
-                    block_dict = {"type": type(block).__name__}
-                    
-                    if hasattr(block, 'text'):
-                        block_dict["text"] = block.text
-                    if hasattr(block, 'thinking'):
-                        block_dict["thinking"] = block.thinking
-                    if hasattr(block, 'name'):
-                        block_dict["name"] = block.name
-                    if hasattr(block, 'id'):
-                        block_dict["id"] = block.id
-                    if hasattr(block, 'input'):
-                        block_dict["input"] = block.input
-                    if hasattr(block, 'tool_use_id'):
-                        block_dict["tool_use_id"] = block.tool_use_id
-                    if hasattr(block, 'content'):
-                        block_dict["content"] = block.content
-                    if hasattr(block, 'is_error'):
-                        block_dict["is_error"] = block.is_error
-                        
-                    content_list.append(block_dict)
-                message_dict["content"] = content_list
-        
-        if hasattr(message, 'model'):
-            message_dict["model"] = message.model
-        if hasattr(message, 'subtype'):
-            message_dict["subtype"] = message.subtype
-        if hasattr(message, 'result'):
-            message_dict["result"] = message.result
-        if hasattr(message, 'duration_ms'):
-            message_dict["duration_ms"] = message.duration_ms
-        if hasattr(message, 'total_cost_usd'):
-            message_dict["total_cost_usd"] = message.total_cost_usd
-        if hasattr(message, 'usage'):
-            message_dict["usage"] = message.usage
-        if hasattr(message, 'is_error'):
-            message_dict["is_error"] = message.is_error
-        if hasattr(message, 'num_turns'):
-            message_dict["num_turns"] = message.num_turns
-            
-        return message_dict
+        return json.loads(json.dumps(message, default=default_serializer))
     
     try:
         print(f"[entrypoint] Starting Claude Code query with {len(mcp_servers)} MCP servers...", file=sys.stderr, flush=True)
