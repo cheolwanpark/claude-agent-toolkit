@@ -5,7 +5,7 @@ import os
 from typing import Any, Dict, List, Optional, Union, Literal
 
 from .tool_connector import ToolConnector
-from .executor import DockerExecutor
+from .executor import ExecutorType, create_executor
 from ..exceptions import ConfigurationError
 from ..constants import ENV_CLAUDE_CODE_OAUTH_TOKEN
 from ..tool.utils import list_tools
@@ -62,7 +62,6 @@ class Agent:
         
         # Initialize components
         self.tool_connector = ToolConnector()
-        self.executor = DockerExecutor()
         
         # Connect tools if provided
         if tools:
@@ -111,7 +110,8 @@ class Agent:
         self, 
         prompt: str, 
         verbose: bool = False,
-        model: Optional[Union[Literal["opus", "sonnet", "haiku"], str]] = None
+        model: Optional[Union[Literal["opus", "sonnet", "haiku"], str]] = None,
+        executor: Optional[ExecutorType] = None
     ) -> str:
         """
         Run the agent with the given prompt.
@@ -120,6 +120,7 @@ class Agent:
             prompt: The instruction for Claude
             verbose: If True, print detailed message processing info
             model: Model to use for this run (overrides agent default)
+            executor: Executor type to use (defaults to DOCKER)
             
         Returns:
             Response string from Claude
@@ -132,7 +133,10 @@ class Agent:
         # Discover available tools from connected MCP servers
         allowed_tools = await self._discover_tools()
         
-        return self.executor.run(
+        # Create executor on demand
+        executor_instance = create_executor(executor or ExecutorType.DOCKER)
+        
+        return executor_instance.run(
             prompt=prompt,
             oauth_token=self.oauth_token,
             tool_urls=self.tool_connector.get_connected_tools(),
