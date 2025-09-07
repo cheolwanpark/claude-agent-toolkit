@@ -102,8 +102,16 @@ jobs:
           echo "using_fallback=true" >> $GITHUB_OUTPUT
         else
           echo "✅ Tags generated successfully by metadata action"
-          echo "final_tags=${METADATA_TAGS}" >> $GITHUB_OUTPUT
-          echo "final_labels=${METADATA_LABELS}" >> $GITHUB_OUTPUT
+          {
+            echo "final_tags<<EOF"
+            echo "${METADATA_TAGS}"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+          {
+            echo "final_labels<<EOF"
+            echo "${METADATA_LABELS}"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
           echo "using_fallback=false" >> $GITHUB_OUTPUT
         fi
 
