@@ -16,6 +16,7 @@ async def main():
     # Get configuration from environment variables
     prompt = os.environ.get('AGENT_PROMPT', '')
     tools_json = os.environ.get('MCP_TOOLS', '{}')
+    allowed_tools_json = os.environ.get('ALLOWED_TOOLS', '[]')
     oauth_token = os.environ.get('CLAUDE_CODE_OAUTH_TOKEN', '')
     system_prompt = os.environ.get('AGENT_SYSTEM_PROMPT')
     model = os.environ.get('ANTHROPIC_MODEL', None)
@@ -34,6 +35,13 @@ async def main():
     except json.JSONDecodeError as e:
         print(f"[entrypoint] Warning: Invalid JSON in MCP_TOOLS: {e}", file=sys.stderr, flush=True)
         tool_urls = {}
+    
+    # Parse allowed tools list
+    try:
+        allowed_tools = json.loads(allowed_tools_json)
+    except json.JSONDecodeError as e:
+        print(f"[entrypoint] Warning: Invalid JSON in ALLOWED_TOOLS: {e}", file=sys.stderr, flush=True)
+        allowed_tools = []
     
     # Configure MCP servers using HTTP configuration
     mcp_servers = {}
@@ -65,10 +73,11 @@ async def main():
     # Setup Claude Code options with proper MCP configuration
     print(f"[entrypoint] MCP servers config: {json.dumps(mcp_servers, indent=2)}", file=sys.stderr, flush=True)
     print(f"[entrypoint] Tool URLs: {json.dumps(tool_urls, indent=2)}", file=sys.stderr, flush=True)
+    print(f"[entrypoint] Allowed tools: {json.dumps(allowed_tools, indent=2)}", file=sys.stderr, flush=True)
     print(f"[entrypoint] Using model: {model}", file=sys.stderr, flush=True)
     
     options = ClaudeCodeOptions(
-        permission_mode="bypassPermissions",
+        allowed_tools=allowed_tools if allowed_tools else None,
         mcp_servers=mcp_servers if mcp_servers else {},
         system_prompt=system_prompt,
         model=model

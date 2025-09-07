@@ -9,6 +9,10 @@ from .tool_connector import ToolConnector
 from .executor import ContainerExecutor
 from ..exceptions import ConfigurationError
 from ..constants import ENV_CLAUDE_CODE_OAUTH_TOKEN
+from ..tool.utils import list_tools
+from ..logging import get_logger
+
+logger = get_logger('agent')
 
 
 class Agent:
@@ -85,6 +89,31 @@ class Agent:
         """
         self.tool_connector.connect_tool(tool)
         return self
+
+    
+    async def _discover_tools(self) -> List[str]:
+        """
+        Discover all available tools from connected MCP servers.
+        
+        Returns:
+            List of tool IDs in the format mcp__servername__toolname
+            
+        Raises:
+            Exception: If tool discovery fails for any connected server
+        """
+        all_tools = []
+        tool_instances = self.tool_connector.get_connected_tool_instances()
+        
+        for tool_name, tool in tool_instances.items():
+            logger.debug("Discovering tools from %s", tool_name)
+            tool_infos = await list_tools(tool)
+            for info in tool_infos:
+                all_tools.append(info.mcp_tool_id)
+                logger.debug("Discovered tool: %s", info.mcp_tool_id)
+            logger.info("Discovered %d tools from %s", len(tool_infos), tool_name)
+        
+        logger.info("Total discovered tools: %d", len(all_tools))
+        return all_tools
     
     async def run(
         self, 
@@ -108,10 +137,14 @@ class Agent:
             ConnectionError: If Docker connection fails
             ExecutionError: If agent execution fails
         """
+        # Discover available tools from connected MCP servers
+        allowed_tools = await self._discover_tools()
+        
         return self.executor.execute(
             prompt=prompt,
             oauth_token=self.oauth_token,
             tool_urls=self.tool_connector.get_connected_tools(),
+            allowed_tools=allowed_tools,
             system_prompt=self.system_prompt,
             verbose=verbose,
             model=model or self.model

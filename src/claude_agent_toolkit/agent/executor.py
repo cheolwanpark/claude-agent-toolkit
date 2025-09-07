@@ -4,7 +4,7 @@
 import json
 import sys
 import uuid
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import docker
 
@@ -30,7 +30,7 @@ class ContainerExecutor:
         self.docker_client = docker_client
         self.image_name = image_name
     
-    def execute(self, prompt: str, oauth_token: str, tool_urls: Dict[str, str], system_prompt: Optional[str] = None, verbose: bool = False, model: Optional[str] = None) -> str:
+    def execute(self, prompt: str, oauth_token: str, tool_urls: Dict[str, str], allowed_tools: Optional[List[str]] = None, system_prompt: Optional[str] = None, verbose: bool = False, model: Optional[str] = None) -> str:
         """
         Execute prompt in Docker container with connected tools.
         
@@ -38,6 +38,7 @@ class ContainerExecutor:
             prompt: The instruction for Claude
             oauth_token: Claude Code OAuth token
             tool_urls: Dictionary of tool_name -> url mappings
+            allowed_tools: List of allowed tool IDs (mcp__servername__toolname format)
             system_prompt: Optional system prompt to customize agent behavior
             verbose: If True, enable verbose output in container
             model: Optional model to use for this execution
@@ -74,6 +75,11 @@ class ContainerExecutor:
             # Pass tools as JSON for easier parsing in entrypoint
             environment['MCP_TOOLS'] = json.dumps(tool_urls)
             logger.info("Connected tools: %s", list(tool_urls.keys()))
+        
+        # Add allowed tools list
+        if allowed_tools:
+            environment['ALLOWED_TOOLS'] = json.dumps(allowed_tools)
+            logger.info("Allowed tools: %d tools discovered", len(allowed_tools))
         
         if not oauth_token:
             raise ConfigurationError("OAuth token is required")
@@ -122,7 +128,7 @@ class ContainerExecutor:
             raise ExecutionError(f"Container failed: {stderr}") from e
             
         except docker.errors.DockerException as e:
-            logger.error("Docker connection failed: %s", e)
+            logger.error("Docker connection failed: %s\n", e)
             raise ConnectionError(f"Docker connection failed: {e}") from e
             
         except Exception as e:

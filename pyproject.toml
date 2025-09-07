@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "claude-agent-toolkit"
-version = "0.1.3b4"
+version = "0.1.3b5"
 description = "Python framework for building Claude Code agents with custom tools"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -44,6 +44,7 @@ dependencies = [
     "fastmcp>=2.12.2",
     "httpx>=0.28.1",
     "jsonpatch>=1.33",
+    "mcp>=1.3.0",
     "uvicorn>=0.35.0",
 ]
 

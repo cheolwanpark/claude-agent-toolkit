@@ -5,7 +5,7 @@ Claude Code agents with custom MCP tools.
 """
 
 from .agent import Agent
-from .tool import BaseTool, tool
+from .tool import BaseTool, tool, ToolInfo, list_tools
 from .logging import set_logging, LogLevel
 from .exceptions import (
     ClaudeAgentError,
@@ -14,11 +14,13 @@ from .exceptions import (
     ExecutionError
 )
 
-__version__ = "0.1.3b4"
+__version__ = "0.1.3b5"
 __all__ = [
     "Agent", 
     "BaseTool", 
     "tool", 
+    "ToolInfo",
+    "list_tools",
     "set_logging", 
     "LogLevel",
     "ClaudeAgentError",

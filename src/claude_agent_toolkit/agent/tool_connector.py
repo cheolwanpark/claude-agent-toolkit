@@ -16,6 +16,7 @@ class ToolConnector:
     def __init__(self):
         """Initialize tool connector."""
         self.tool_urls: Dict[str, str] = {}  # tool_name -> url mapping
+        self.tools: Dict[str, Any] = {}  # tool_name -> tool instance mapping  # tool_name -> url mapping
     
     def connect_tool(self, tool: Any) -> str:
         """
@@ -42,6 +43,7 @@ class ToolConnector:
             url = url.replace(localhost, docker_host)
         
         self.tool_urls[tool_name] = url
+        self.tools[tool_name] = tool  # Store tool instance for discovery
         logger.info("Connected to %s at %s", tool_name, url)
         
         return tool_name
@@ -49,7 +51,13 @@ class ToolConnector:
     def get_connected_tools(self) -> Dict[str, str]:
         """Get all connected tool URLs."""
         return self.tool_urls.copy()
+
+    
+    def get_connected_tool_instances(self) -> Dict[str, Any]:
+        """Get all connected tool instances."""
+        return self.tools.copy()
     
     def clear_connections(self):
         """Clear all tool connections."""
         self.tool_urls.clear()
+        self.tools.clear()

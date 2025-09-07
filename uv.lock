@@ -207,7 +207,7 @@ wheels = [
 
 [[package]]
 name = "claude-agent-toolkit"
-version = "0.1.3b3"
+version = "0.1.3b4"
 source = { editable = "." }
 dependencies = [
     { name = "claude-code-sdk" },
@@ -215,6 +215,7 @@ dependencies = [
     { name = "fastmcp" },
     { name = "httpx" },
     { name = "jsonpatch" },
+    { name = "mcp" },
     { name = "uvicorn" },
 ]
 
@@ -265,6 +266,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "isort", marker = "extra == 'dev'", specifier = ">=5.12.0" },
     { name = "jsonpatch", specifier = ">=1.33" },
+    { name = "mcp", specifier = ">=1.3.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.5.0" },
     { name = "myst-parser", marker = "extra == 'docs'", specifier = ">=2.0.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
