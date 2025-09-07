@@ -1,36 +1,89 @@
 #!/usr/bin/env python3
-# executor.py - Container execution and result parsing
+# docker.py - Docker executor with integrated Docker management
 
 import json
-import sys
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 import docker
+from docker.errors import ImageNotFound
 
-from ..logging import get_logger
-from ..exceptions import ConfigurationError, ConnectionError, ExecutionError
-from ..constants import DOCKER_HOST_GATEWAY, CONTAINER_NAME_PREFIX, CONTAINER_UUID_LENGTH, MODEL_ID_MAPPING
-from .response_handler import ResponseHandler
+from .base import BaseExecutor
+from ...constants import (
+    get_versioned_docker_image, DOCKER_HOST_GATEWAY, 
+    CONTAINER_NAME_PREFIX, CONTAINER_UUID_LENGTH, MODEL_ID_MAPPING
+)
+from ...logging import get_logger
+from ...exceptions import ConfigurationError, ConnectionError, ExecutionError
+from ..response_handler import ResponseHandler
 
 logger = get_logger('agent')
 
 
-class ContainerExecutor:
-    """Handles Docker container execution and result parsing."""
+class DockerExecutor(BaseExecutor):
+    """Docker-based executor with integrated Docker client and image management."""
     
-    def __init__(self, docker_client: docker.DockerClient, image_name: str):
+    def __init__(self):
         """
-        Initialize container executor.
+        Initialize Docker executor with client and image management.
         
-        Args:
-            docker_client: Docker client instance
-            image_name: Docker image to use for execution
+        Note:
+            Docker image version automatically matches the installed package version (__version__) for safety.
+            No fallback is available - version must match exactly.
         """
-        self.docker_client = docker_client
-        self.image_name = image_name
+        self.image_name = get_versioned_docker_image()
+        try:
+            self.client = docker.from_env()
+            self.client.ping()
+        except docker.errors.DockerException as e:
+            raise ConnectionError(
+                f"Cannot connect to Docker. Please ensure Docker Desktop is running.\n"
+                f"Error: {e}"
+            ) from e
+        except Exception as e:
+            raise ConnectionError(
+                f"Docker connection failed with unexpected error: {e}"
+            ) from e
+        
+        # Ensure Docker image is available
+        self.ensure_image()
     
-    def execute(self, prompt: str, oauth_token: str, tool_urls: Dict[str, str], allowed_tools: Optional[List[str]] = None, system_prompt: Optional[str] = None, verbose: bool = False, model: Optional[str] = None) -> str:
+    def ensure_image(self):
+        """Ensure Docker image is available by pulling from Docker Hub."""
+        try:
+            self.client.images.get(self.image_name)
+            logger.debug("Using existing image: %s", self.image_name)
+            return
+        except ImageNotFound:
+            pass
+        
+        # Pull from Docker Hub
+        try:
+            logger.info("Pulling image from Docker Hub: %s", self.image_name)
+            self.client.images.pull(self.image_name)
+            logger.info("Successfully pulled %s", self.image_name)
+        except docker.errors.DockerException as e:
+            raise ConnectionError(
+                f"Failed to pull Docker image {self.image_name} from Docker Hub.\n"
+                f"Please ensure the exact version image exists and you have internet connectivity.\n"
+                f"No fallback is available - version must match exactly for safety.\n"
+                f"Error: {e}"
+            ) from e
+        except Exception as e:
+            raise ConnectionError(
+                f"Image pull failed with unexpected error: {e}"
+            ) from e
+    
+    def run(
+        self, 
+        prompt: str, 
+        oauth_token: str, 
+        tool_urls: Dict[str, str], 
+        allowed_tools: Optional[List[str]] = None, 
+        system_prompt: Optional[str] = None, 
+        verbose: bool = False, 
+        model: Optional[str] = None
+    ) -> str:
         """
         Execute prompt in Docker container with connected tools.
         
@@ -90,7 +143,7 @@ class ContainerExecutor:
             
             logger.debug("Starting container %s", container_name)
             
-            container = self.docker_client.containers.run(
+            container = self.client.containers.run(
                 image=self.image_name,
                 name=container_name,
                 command="python /app/entrypoint.py",

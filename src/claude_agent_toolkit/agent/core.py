@@ -4,9 +4,8 @@
 import os
 from typing import Any, Dict, List, Optional, Union, Literal
 
-from .docker_manager import DockerManager
 from .tool_connector import ToolConnector
-from .executor import ContainerExecutor
+from .executor import DockerExecutor
 from ..exceptions import ConfigurationError
 from ..constants import ENV_CLAUDE_CODE_OAUTH_TOKEN
 from ..tool.utils import list_tools
@@ -62,15 +61,8 @@ class Agent:
             raise ConfigurationError(f"OAuth token required: pass oauth_token or set {ENV_CLAUDE_CODE_OAUTH_TOKEN}")
         
         # Initialize components
-        self.docker_manager = DockerManager()
         self.tool_connector = ToolConnector()
-        self.executor = ContainerExecutor(
-            self.docker_manager.client, 
-            self.docker_manager.IMAGE_NAME
-        )
-        
-        # Ensure Docker image exists
-        self.docker_manager.ensure_image()
+        self.executor = DockerExecutor()
         
         # Connect tools if provided
         if tools:
@@ -140,7 +132,7 @@ class Agent:
         # Discover available tools from connected MCP servers
         allowed_tools = await self._discover_tools()
         
-        return self.executor.execute(
+        return self.executor.run(
             prompt=prompt,
             oauth_token=self.oauth_token,
             tool_urls=self.tool_connector.get_connected_tools(),
