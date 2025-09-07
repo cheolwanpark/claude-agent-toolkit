@@ -2,6 +2,8 @@
 # subprocess.py - Subprocess executor without Docker dependency
 
 import asyncio
+import dataclasses
+import json
 import os
 import tempfile
 from typing import Dict, List, Optional
@@ -12,6 +14,7 @@ from .base import BaseExecutor
 from ...constants import MODEL_ID_MAPPING
 from ...exceptions import ConfigurationError, ExecutionError
 from ...logging import get_logger
+from ..response_handler import ResponseHandler
 
 logger = get_logger('agent')
 
@@ -116,72 +119,59 @@ class SubprocessExecutor(BaseExecutor):
                     logger.info("Allowed tools: %d tools discovered", len(allowed_tools))
                 logger.info("Using model: %s", final_model)
             
-            # Setup Claude Code options
-            options = ClaudeCodeOptions(
-                allowed_tools=allowed_tools if allowed_tools else None,
-                mcp_servers=mcp_servers if mcp_servers else {},
-                system_prompt=system_prompt,
-                model=final_model
-            )
-            
             # Create temporary directory for minimal isolation
             with tempfile.TemporaryDirectory(prefix="claude-agent-") as temp_dir:
                 logger.debug("Created temporary directory: %s", temp_dir)
                 
-                # Change to temporary directory for SDK execution
-                original_cwd = os.getcwd()
+                # Setup Claude Code options with temporary directory as working directory
+                options = ClaudeCodeOptions(
+                    allowed_tools=allowed_tools if allowed_tools else None,
+                    mcp_servers=mcp_servers if mcp_servers else {},
+                    system_prompt=system_prompt,
+                    model=final_model,
+                    cwd=temp_dir
+                )
+                
+                # Create response handler for processing messages
+                handler = ResponseHandler()
+                
                 try:
-                    os.chdir(temp_dir)
+                    logger.debug("Starting Claude Code query with %d MCP servers", len(mcp_servers))
                     
-                    # Collect all responses
-                    text_responses = []
-                    final_result = None
-                    
-                    try:
-                        logger.debug("Starting Claude Code query with %d MCP servers", len(mcp_servers))
-                        
-                        async for message in query(prompt=prompt, options=options):
-                            # Handle different message types
-                            msg_type = getattr(message, 'type', type(message).__name__)
+                    async for message in query(prompt=prompt, options=options):
+                        # Convert message to JSON format for ResponseHandler
+                        try:
+                            # Convert dataclass message to dict for JSON serialization
+                            try:
+                                message_dict = dataclasses.asdict(message)
+                            except (TypeError, AttributeError):
+                                # Fallback for non-dataclass objects
+                                message_dict = {'type': type(message).__name__, 'content': str(message)}
                             
+                            # Serialize to JSON string for ResponseHandler
+                            json_line = json.dumps(message_dict)
+                            
+                            # Process through ResponseHandler
+                            result = handler.handle(json_line, verbose)
+                            if result:
+                                logger.info("Execution completed successfully")
+                                return result
+                                
+                        except (TypeError, AttributeError) as e:
                             if verbose:
-                                logger.debug("Received message type: %s", msg_type)
-                            
-                            # Handle AssistantMessage for text responses
-                            if hasattr(message, 'content'):
-                                content = message.content
-                                if isinstance(content, list):
-                                    for block in content:
-                                        if hasattr(block, 'type') and block.type == 'text':
-                                            text = getattr(block, 'text', '')
-                                            if text:
-                                                text_responses.append(text)
-                                                if verbose:
-                                                    logger.debug("Added text response: %s", text[:100])
-                            
-                            # Handle ResultMessage for final result
-                            if hasattr(message, 'result'):
-                                final_result = message.result
-                                if verbose:
-                                    logger.debug("Received final result: %s", str(final_result)[:100])
-                                    
-                    except Exception as e:
-                        logger.error("Claude Code SDK execution failed: %s", e)
-                        raise ExecutionError(f"Claude Code SDK execution failed: {e}") from e
-                    
-                    # Return final result or accumulated text responses
-                    if final_result:
-                        logger.info("Execution completed successfully with final result")
-                        return str(final_result)
-                    elif text_responses:
-                        logger.info("Execution completed with text responses")
-                        return '\n'.join(text_responses)
-                    else:
-                        raise ExecutionError("No response received from Claude")
-                        
-                finally:
-                    # Restore original working directory
-                    os.chdir(original_cwd)
+                                logger.debug("Failed to process message: %s", e)
+                            continue
+                                
+                except Exception as e:
+                    logger.error("Claude Code SDK execution failed: %s", e)
+                    raise ExecutionError(f"Claude Code SDK execution failed: {e}") from e
+                
+                # If we get here, no ResultMessage was received
+                if handler.text_responses:
+                    logger.info("Execution completed with text responses")
+                    return '\n'.join(handler.text_responses)
+                else:
+                    raise ExecutionError("No response received from Claude")
                     
         finally:
             # Restore original environment
