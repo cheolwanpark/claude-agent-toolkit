@@ -14,7 +14,7 @@ from .exceptions import (
     ExecutionError
 )
 
-__version__ = "0.1.3b5"
+__version__ = "0.1.3"
 __all__ = [
     "Agent", 
     "BaseTool", 
