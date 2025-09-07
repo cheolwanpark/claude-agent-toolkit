@@ -9,7 +9,7 @@ class BaseExecutor(ABC):
     """Abstract base class for all executor implementations."""
     
     @abstractmethod
-    def run(
+    async def run(
         self, 
         prompt: str, 
         oauth_token: str, 

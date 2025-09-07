@@ -74,7 +74,7 @@ class DockerExecutor(BaseExecutor):
                 f"Image pull failed with unexpected error: {e}"
             ) from e
     
-    def run(
+    async def run(
         self, 
         prompt: str, 
         oauth_token: str, 

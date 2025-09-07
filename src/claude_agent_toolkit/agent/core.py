@@ -136,7 +136,7 @@ class Agent:
         # Create executor on demand
         executor_instance = create_executor(executor or ExecutorType.DOCKER)
         
-        return executor_instance.run(
+        return await executor_instance.run(
             prompt=prompt,
             oauth_token=self.oauth_token,
             tool_urls=self.tool_connector.get_connected_tools(),

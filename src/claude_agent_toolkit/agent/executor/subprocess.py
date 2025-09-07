@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 # subprocess.py - Subprocess executor without Docker dependency
 
-import asyncio
-import dataclasses
 import json
 import os
 import tempfile
@@ -32,7 +30,7 @@ class SubprocessExecutor(BaseExecutor):
         """
         logger.debug("Initialized SubprocessExecutor")
     
-    def run(
+    async def run(
         self, 
         prompt: str, 
         oauth_token: str, 
@@ -66,8 +64,8 @@ class SubprocessExecutor(BaseExecutor):
         if not oauth_token:
             raise ConfigurationError("OAuth token is required")
         
-        # Use asyncio to run the async execution
-        return asyncio.run(self._run_claude_code_sdk(
+        # Directly await the async execution
+        return await self._run_claude_code_sdk(
             prompt=prompt,
             oauth_token=oauth_token,
             tool_urls=tool_urls,
@@ -75,7 +73,19 @@ class SubprocessExecutor(BaseExecutor):
             system_prompt=system_prompt,
             verbose=verbose,
             model=model
-        ))
+        )
+    
+    def _serialize_message(self, message):
+        """Convert a claude-code-sdk message to a serializable dict."""
+        def default_serializer(obj):
+            """Custom serializer for objects that aren't JSON serializable by default."""
+            if hasattr(obj, '__dict__'):
+                result = {"type": type(obj).__name__}
+                result.update(obj.__dict__)
+                return result
+            return str(obj)
+        
+        return json.loads(json.dumps(message, default=default_serializer))
     
     async def _run_claude_code_sdk(
         self,
@@ -141,14 +151,8 @@ class SubprocessExecutor(BaseExecutor):
                     async for message in query(prompt=prompt, options=options):
                         # Convert message to JSON format for ResponseHandler
                         try:
-                            # Convert dataclass message to dict for JSON serialization
-                            try:
-                                message_dict = dataclasses.asdict(message)
-                            except (TypeError, AttributeError):
-                                # Fallback for non-dataclass objects
-                                message_dict = {'type': type(message).__name__, 'content': str(message)}
-                            
-                            # Serialize to JSON string for ResponseHandler
+                            # Serialize message using the same method as Docker entrypoint
+                            message_dict = self._serialize_message(message)
                             json_line = json.dumps(message_dict)
                             
                             # Process through ResponseHandler
@@ -157,7 +161,7 @@ class SubprocessExecutor(BaseExecutor):
                                 logger.info("Execution completed successfully")
                                 return result
                                 
-                        except (TypeError, AttributeError) as e:
+                        except Exception as e:
                             if verbose:
                                 logger.debug("Failed to process message: %s", e)
                             continue
