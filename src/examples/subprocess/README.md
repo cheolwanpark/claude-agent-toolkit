@@ -69,12 +69,14 @@ The key difference from Docker execution is specifying the executor:
 ```python
 from claude_agent_toolkit import Agent, ExecutorType
 
-agent = Agent(tools=[simple_tool])
+# Use subprocess instead of Docker - specify in constructor
+agent = Agent(
+    tools=[simple_tool],
+    executor=ExecutorType.SUBPROCESS  # This is the key line!
+)
 
-# Use subprocess instead of Docker
 response = await agent.run(
     "Your prompt here",
-    executor=ExecutorType.SUBPROCESS,  # This is the key line!
     verbose=True
 )
 ```

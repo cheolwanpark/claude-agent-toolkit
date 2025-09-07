@@ -8,8 +8,8 @@ import sys
 # Import from claude-agent-toolkit package
 from claude_agent_toolkit import Agent, ExecutorType, ConnectionError, ConfigurationError, ExecutionError
 
-# Import our simple tool
-from tool import SimpleTool
+# Import our message reflector tool
+from tool import MessageReflector
 
 
 async def run_subprocess_demo():
@@ -19,7 +19,7 @@ async def run_subprocess_demo():
     print("="*60)
     print("\nThis demo showcases:")
     print("1. SubprocessExecutor instead of Docker execution")
-    print("2. Simple tool implementation (SimpleTool)")
+    print("2. MessageReflector tool implementation with distinct naming")
     print("3. Direct subprocess execution without containers")
     print("4. Testing MCP tool integration with subprocess")
     
@@ -31,24 +31,28 @@ async def run_subprocess_demo():
         return False
     
     try:
-        # Create the simple tool
-        simple_tool = SimpleTool()
+        # Create the message reflector tool
+        reflector_tool = MessageReflector()
         
         # Create agent with subprocess executor preference
         agent = Agent(
-            system_prompt="You are a helpful assistant that can echo messages. Use the available tools to respond to user requests.",
-            tools=[simple_tool]
+            system_prompt="""You are a helpful assistant with MessageReflector tool functions. Use ONLY these specific tool IDs:
+- mcp__messagereflector__reflect_message: Reflect messages back with metadata
+- mcp__messagereflector__get_reflection_history: Get history of reflections  
+- mcp__messagereflector__get_tool_status: Get current tool status
+DO NOT use bash echo or any other tools. Always use the exact mcp__messagereflector__ tool IDs listed above.""",
+            tools=[reflector_tool],
+            executor=ExecutorType.SUBPROCESS  # Use subprocess instead of Docker
         )
         
         print(f"\n📝 Starting Subprocess Executor Demo")
         print("-" * 40)
         
-        # Demo 1: Basic echo test
-        print(f"\n🔄 Demo 1: Basic Echo Test")
+        # Demo 1: Basic reflection test
+        print(f"\n🔄 Demo 1: Basic Message Reflection Test")
         try:
             response = await agent.run(
-                "Please use the echo tool to echo the message 'Hello from subprocess executor!'",
-                executor=ExecutorType.SUBPROCESS,  # Key: Use subprocess instead of Docker
+                "Please use the exact tool ID mcp__messagereflector__reflect_message to reflect back the message 'Hello from subprocess executor!'",
                 verbose=True
             )
             
@@ -62,8 +66,7 @@ async def run_subprocess_demo():
         print(f"\n🔄 Demo 2: Multiple Tool Interactions")
         try:
             response = await agent.run(
-                "Please echo 'First message' and then echo 'Second message', then check the tool status.",
-                executor=ExecutorType.SUBPROCESS,
+                "Please use mcp__messagereflector__reflect_message to reflect 'First message' and then reflect 'Second message', then use mcp__messagereflector__get_tool_status to check the tool status.",
                 verbose=True
             )
             
@@ -77,8 +80,7 @@ async def run_subprocess_demo():
         print(f"\n🔄 Demo 3: History and Status Check")
         try:
             response = await agent.run(
-                "Please get the history of echo calls and show me the current tool status.",
-                executor=ExecutorType.SUBPROCESS,
+                "Please use mcp__messagereflector__get_reflection_history to get the reflection history and mcp__messagereflector__get_tool_status to show me the current tool status.",
                 verbose=True
             )
             
@@ -89,16 +91,16 @@ async def run_subprocess_demo():
             return False
         
         # Verify that tools were actually called
-        call_count = simple_tool.call_count
-        message_history = len(simple_tool.messages)
+        call_count = reflector_tool.call_count
+        message_history = len(reflector_tool.messages)
         
         if call_count > 0:
-            print(f"\n✅ SUCCESS: SimpleTool was called {call_count} times")
+            print(f"\n✅ SUCCESS: MessageReflector tool was called {call_count} times")
             print(f"✅ Message history contains {message_history} entries")
             print(f"✅ Subprocess executor is working correctly!")
             return True
         else:
-            print(f"\n❌ FAILURE: SimpleTool was not called")
+            print(f"\n❌ FAILURE: MessageReflector tool was not called")
             return False
             
     except ConnectionError as e:
@@ -140,17 +142,22 @@ async def run_interactive_mode():
         return
     
     try:
-        # Create the simple tool
-        simple_tool = SimpleTool()
+        # Create the message reflector tool
+        reflector_tool = MessageReflector()
         
         # Create agent
         agent = Agent(
-            system_prompt="You are a helpful assistant with access to echo and status tools. Always use the tools when appropriate.",
-            tools=[simple_tool]
+            system_prompt="""You are a helpful assistant with MessageReflector tool functions. Use ONLY these exact tool IDs:
+- mcp__messagereflector__reflect_message: Reflect messages back
+- mcp__messagereflector__get_reflection_history: Get reflection history
+- mcp__messagereflector__get_tool_status: Get tool status
+DO NOT use bash echo or any other MCP tools. Always use the exact mcp__messagereflector__ tool IDs.""",
+            tools=[reflector_tool],
+            executor=ExecutorType.SUBPROCESS  # Use subprocess instead of Docker
         )
         
         print(f"\n🤖 Subprocess agent is ready! Type 'quit' to exit.")
-        print(f"Available commands: echo messages, check status, view history")
+        print(f"Available commands: reflect messages, check status, view reflection history")
         
         while True:
             user_input = input("\n📝 Your command: ").strip()
@@ -164,7 +171,6 @@ async def run_interactive_mode():
             try:
                 response = await agent.run(
                     f"User request: {user_input}",
-                    executor=ExecutorType.SUBPROCESS,
                     verbose=True
                 )
                 print(f"\n🤖 Assistant: {response}")

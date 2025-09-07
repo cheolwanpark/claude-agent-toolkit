@@ -39,7 +39,8 @@ class Agent:
         oauth_token: Optional[str] = None,
         system_prompt: Optional[str] = None,
         tools: Optional[List[Any]] = None,
-        model: Optional[Union[Literal["opus", "sonnet", "haiku"], str]] = None
+        model: Optional[Union[Literal["opus", "sonnet", "haiku"], str]] = None,
+        executor: Optional[ExecutorType] = None
     ):
         """
         Initialize the Agent.
@@ -49,6 +50,7 @@ class Agent:
             system_prompt: System prompt to customize agent behavior
             tools: List of tool instances to connect automatically
             model: Model to use ("opus", "sonnet", "haiku", or any Claude model name/ID)
+            executor: Executor type to use (defaults to DOCKER)
         
         Note:
             Docker image version automatically matches the installed package version (__version__) for safety.
@@ -60,8 +62,13 @@ class Agent:
         if not self.oauth_token:
             raise ConfigurationError(f"OAuth token required: pass oauth_token or set {ENV_CLAUDE_CODE_OAUTH_TOKEN}")
         
-        # Initialize components
-        self.tool_connector = ToolConnector()
+        # Create executor instance
+        self.executor_type = executor or ExecutorType.DOCKER
+        self.executor = create_executor(self.executor_type)
+        
+        # Initialize components with Docker-aware configuration
+        is_docker = self.executor_type == ExecutorType.DOCKER
+        self.tool_connector = ToolConnector(is_docker=is_docker)
         
         # Connect tools if provided
         if tools:
@@ -89,29 +96,44 @@ class Agent:
         Returns:
             List of tool IDs in the format mcp__servername__toolname
             
-        Raises:
-            Exception: If tool discovery fails for any connected server
+        Note:
+            Uses graceful error handling - continues discovery even if some servers fail
         """
         all_tools = []
         tool_instances = self.tool_connector.get_connected_tool_instances()
+        successful_discoveries = 0
         
         for tool_name, tool in tool_instances.items():
-            logger.debug("Discovering tools from %s", tool_name)
-            tool_infos = await list_tools(tool)
-            for info in tool_infos:
-                all_tools.append(info.mcp_tool_id)
-                logger.debug("Discovered tool: %s", info.mcp_tool_id)
-            logger.info("Discovered %d tools from %s", len(tool_infos), tool_name)
+            try:
+                logger.debug("Discovering tools from %s", tool_name)
+                tool_infos = await list_tools(tool)
+                
+                for info in tool_infos:
+                    all_tools.append(info.mcp_tool_id)
+                    logger.debug("Discovered tool: %s", info.mcp_tool_id)
+                
+                logger.info("Discovered %d tools from %s", len(tool_infos), tool_name)
+                successful_discoveries += 1
+                
+            except Exception as e:
+                logger.warning("Failed to discover tools from %s: %s", tool_name, e)
+                logger.debug("Tool discovery error details for %s", tool_name, exc_info=True)
+                # Continue with other tools instead of failing completely
+                continue
         
-        logger.info("Total discovered tools: %d", len(all_tools))
+        logger.info("Total discovered tools: %d from %d/%d servers", 
+                   len(all_tools), successful_discoveries, len(tool_instances))
+        
+        if successful_discoveries == 0 and len(tool_instances) > 0:
+            logger.warning("No tools discovered from any connected servers - agent will have limited functionality")
+        
         return all_tools
     
     async def run(
         self, 
         prompt: str, 
         verbose: bool = False,
-        model: Optional[Union[Literal["opus", "sonnet", "haiku"], str]] = None,
-        executor: Optional[ExecutorType] = None
+        model: Optional[Union[Literal["opus", "sonnet", "haiku"], str]] = None
     ) -> str:
         """
         Run the agent with the given prompt.
@@ -120,7 +142,6 @@ class Agent:
             prompt: The instruction for Claude
             verbose: If True, print detailed message processing info
             model: Model to use for this run (overrides agent default)
-            executor: Executor type to use (defaults to DOCKER)
             
         Returns:
             Response string from Claude
@@ -133,10 +154,8 @@ class Agent:
         # Discover available tools from connected MCP servers
         allowed_tools = await self._discover_tools()
         
-        # Create executor on demand
-        executor_instance = create_executor(executor or ExecutorType.DOCKER)
-        
-        return await executor_instance.run(
+        # Use stored executor instance
+        return await self.executor.run(
             prompt=prompt,
             oauth_token=self.oauth_token,
             tool_urls=self.tool_connector.get_connected_tools(),

@@ -73,35 +73,38 @@ async def list_tools(tool: BaseTool) -> List[ToolInfo]:
     
     logger.debug(f"Connecting to MCP server at {server_url} for {server_name}")
     
-    try:
-        # Connect using streamable HTTP client
-        async with streamablehttp_client(server_url) as (read_stream, write_stream, _):
-            async with ClientSession(read_stream, write_stream) as session:
-                # Initialize the connection
-                await session.initialize()
-                logger.debug(f"Initialized MCP session for {server_name}")
-                
-                # List available tools
-                tools_response = await session.list_tools()
-                logger.info(f"Retrieved {len(tools_response.tools)} tools from {server_name}")
-                
-                # Convert to ToolInfo objects
-                tool_infos = []
-                for mcp_tool in tools_response.tools:
-                    tool_info = ToolInfo(
-                        server_name=server_name,
-                        tool_name=mcp_tool.name,
-                        description=mcp_tool.description or "",
-                        input_schema=mcp_tool.inputSchema or {}
-                    )
-                    tool_infos.append(tool_info)
-                    logger.debug(f"Added tool: {tool_info.mcp_tool_id}")
-                
-                return tool_infos
-                
-    except Exception as e:
-        # Check if it's a connection-related error
-        if "connection" in str(e).lower() or "timeout" in str(e).lower():
-            raise ConnectionError(f"Failed to connect to MCP server {server_url}: {e}") from e
-        else:
-            raise ExecutionError(f"Failed to retrieve tools from {server_name}: {e}") from e
+    # Use isolated async context to avoid cross-task violations
+    async def _isolated_tool_discovery():
+        """Isolated async context for MCP session to avoid TaskGroup cross-task issues."""
+        try:
+            # Connect using streamable HTTP client in isolated context
+            async with streamablehttp_client(server_url) as (read_stream, write_stream, _):
+                async with ClientSession(read_stream, write_stream) as session:
+                    # Initialize the connection
+                    await session.initialize()
+                    logger.debug(f"Initialized MCP session for {server_name}")
+                    
+                    # List available tools
+                    tools_response = await session.list_tools()
+                    logger.info(f"Retrieved {len(tools_response.tools)} tools from {server_name}")
+                    
+                    # Convert to ToolInfo objects
+                    tool_infos = []
+                    for mcp_tool in tools_response.tools:
+                        tool_info = ToolInfo(
+                            server_name=server_name,
+                            tool_name=mcp_tool.name,
+                            description=mcp_tool.description or "",
+                            input_schema=mcp_tool.inputSchema or {}
+                        )
+                        tool_infos.append(tool_info)
+                        logger.debug(f"Added tool: {tool_info.mcp_tool_id}")
+                    
+                    return tool_infos
+                    
+        except Exception as e:
+            logger.error(f"Tool discovery failed for {server_name}: {e}")
+            raise ExecutionError(f"Failed to discover tools from {server_name}: {e}") from e
+    
+    # Execute the isolated tool discovery
+    return await _isolated_tool_discovery()

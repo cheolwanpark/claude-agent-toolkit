@@ -87,6 +87,79 @@ class SubprocessExecutor(BaseExecutor):
         
         return json.loads(json.dumps(message, default=default_serializer))
     
+    async def _isolated_claude_query(
+        self, 
+        prompt: str, 
+        options,
+        handler,
+        verbose: bool = False
+    ) -> Optional[str]:
+        """
+        Isolated async context for claude-code-sdk query.
+        
+        This method ensures the entire claude-code-sdk async generator 
+        lifecycle (including TaskGroup creation/cleanup) happens within 
+        a single, contained async context to avoid cross-task violations.
+        
+        Args:
+            prompt: The instruction for Claude
+            options: ClaudeCodeOptions instance
+            handler: ResponseHandler instance
+            verbose: Enable verbose logging
+            
+        Returns:
+            Response string from Claude if available
+            
+        Raises:
+            ExecutionError: If query execution fails
+        """
+        
+        query_result = None
+        query_generator = None
+        
+        try:
+            # Initialize generator in this async context
+            query_generator = query(prompt=prompt, options=options)
+            
+            # Process all messages in same async context
+            # Note: Don't break early - let generator complete naturally
+            async for message in query_generator:
+                try:
+                    # Process message through handler
+                    message_dict = self._serialize_message(message)
+                    json_line = json.dumps(message_dict)
+                    
+                    result = handler.handle(json_line, verbose)
+                    if result and not query_result:
+                        # Store first result but continue processing
+                        query_result = result
+                        
+                except Exception as e:
+                    if verbose:
+                        logger.debug("Failed to process message: %s", e)
+                    continue
+            
+            # Generator completed naturally - TaskGroup cleanup happens here
+            
+        except GeneratorExit:
+            # AnyIO best practice: Allow natural cleanup, don't interfere
+            raise
+            
+        except Exception as e:
+            logger.error("Claude Code query failed: %s", e)
+            raise ExecutionError(f"Claude Code query failed: {e}") from e
+            
+        finally:
+            # Ensure generator cleanup happens in same async context
+            if query_generator:
+                try:
+                    await query_generator.aclose()
+                except (AttributeError, RuntimeError):
+                    # Generator may already be closed or not have aclose method
+                    pass
+        
+        return query_result
+    
     async def _run_claude_code_sdk(
         self,
         prompt: str,
@@ -131,7 +204,6 @@ class SubprocessExecutor(BaseExecutor):
             
             # Create temporary directory for minimal isolation
             with tempfile.TemporaryDirectory(prefix="claude-agent-") as temp_dir:
-                logger.debug("Created temporary directory: %s", temp_dir)
                 
                 # Setup Claude Code options with temporary directory as working directory
                 options = ClaudeCodeOptions(
@@ -145,30 +217,18 @@ class SubprocessExecutor(BaseExecutor):
                 # Create response handler for processing messages
                 handler = ResponseHandler()
                 
-                try:
-                    logger.debug("Starting Claude Code query with %d MCP servers", len(mcp_servers))
-                    
-                    async for message in query(prompt=prompt, options=options):
-                        # Convert message to JSON format for ResponseHandler
-                        try:
-                            # Serialize message using the same method as Docker entrypoint
-                            message_dict = self._serialize_message(message)
-                            json_line = json.dumps(message_dict)
-                            
-                            # Process through ResponseHandler
-                            result = handler.handle(json_line, verbose)
-                            if result:
-                                logger.info("Execution completed successfully")
-                                return result
-                                
-                        except Exception as e:
-                            if verbose:
-                                logger.debug("Failed to process message: %s", e)
-                            continue
-                                
-                except Exception as e:
-                    logger.error("Claude Code SDK execution failed: %s", e)
-                    raise ExecutionError(f"Claude Code SDK execution failed: {e}") from e
+                
+                # Use isolated async context for query execution
+                result = await self._isolated_claude_query(
+                    prompt=prompt,
+                    options=options,
+                    handler=handler,
+                    verbose=verbose
+                )
+                
+                if result:
+                    logger.info("Execution completed successfully")
+                    return result
                 
                 # If we get here, no ResultMessage was received
                 if handler.text_responses:
@@ -178,6 +238,10 @@ class SubprocessExecutor(BaseExecutor):
                     raise ExecutionError("No response received from Claude")
                     
         finally:
-            # Restore original environment
-            os.environ.clear()
-            os.environ.update(original_env)
+            # Restore original environment - use try/except to protect critical cleanup
+            try:
+                os.environ.clear()
+                os.environ.update(original_env)
+            except Exception as e:
+                logger.warning("Failed to restore environment: %s", e)
+                # Don't raise - environment restoration shouldn't break execution
