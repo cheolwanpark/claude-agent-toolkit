@@ -77,6 +77,7 @@ Claude Agent Toolkit implements a flexible architecture supporting both Docker-i
 - **Structure**: Each tool is a standalone module inheriting from BaseTool
 - **Import Pattern**: Clean imports via package `__init__.py` exports
 - **Development**: Follow same patterns as custom tools in examples
+- **Current Tools**: FileSystemTool (secure file access), DataTransferTool (structured data transfer)
 
 #### Executor Architecture
 
@@ -179,13 +180,14 @@ The framework includes pre-built tools in `src/claude_agent_toolkit/tools/` that
 src/claude_agent_toolkit/tools/
 ├── __init__.py          # Package exports for clean imports
 ├── filesystem.py        # FileSystemTool implementation
+├── datatransfer.py      # DataTransferTool implementation  
 └── [future_tools.py]    # Additional built-in tools
 ```
 
 #### Import Conventions
 ```python
 # Built-in tools use clean package imports
-from claude_agent_toolkit.tools import FileSystemTool
+from claude_agent_toolkit.tools import FileSystemTool, DataTransferTool
 
 # Custom tools use direct module imports
 from my_project.tools import MyCustomTool
@@ -216,6 +218,8 @@ cd src/examples/weather && python main.py
 cd src/examples/subprocess && python main.py
 # Filesystem example (demonstrates built-in tools):
 cd src/examples/filesystem && python main.py
+# DataTransfer example (demonstrates modular data transfer):
+cd src/examples/datatransfer && python main.py
 ```
 
 ## Configuration

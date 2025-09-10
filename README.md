@@ -60,6 +60,8 @@ cd src/examples/weather && python main.py
 cd src/examples/subprocess && python main.py
 # Filesystem example (with FileSystemTool):
 cd src/examples/filesystem && python main.py
+# DataTransfer example (with DataTransferTool):
+cd src/examples/datatransfer && python main.py
 ```
 
 This will run demonstration examples:
@@ -67,6 +69,7 @@ This will run demonstration examples:
 2. **Weather Demo** - Demonstrates external API integration with real-time data and async operations
 3. **Subprocess Demo** - Shows subprocess executor usage without Docker dependency
 4. **Filesystem Demo** - Demonstrates FileSystemTool with pattern-based permissions and agent integration
+5. **DataTransfer Demo** - Shows DataTransferTool with type-safe data transfer, validation, and multi-model scenarios
 
 ### Executor Options
 
@@ -204,6 +207,86 @@ result = await agent.run(
 - All paths are confined to the specified `root_dir`
 - Path traversal attempts (`../`) are blocked
 - When permissions conflict, write permission wins (write includes read)
+
+### DataTransferTool
+
+Generic tool for transferring structured data between Claude agents and host applications using any Pydantic BaseModel.
+
+**Key Features:**
+- Generic implementation works with any Pydantic BaseModel subclass
+- Automatic schema inclusion in tool descriptions for Claude
+- Type-safe data validation and transfer with runtime validation
+- Dynamic class creation for distinct tool identities
+- Simple transfer/get interface for host applications
+
+**Basic Usage:**
+
+```python
+from claude_agent_toolkit import Agent
+from claude_agent_toolkit.tools import DataTransferTool
+from pydantic import BaseModel, Field
+
+# Define your data model
+class UserProfile(BaseModel):
+    name: str = Field(..., description="Full name of the user")
+    age: int = Field(..., ge=0, le=150, description="Age in years")
+    email: str = Field(..., description="Email address")
+    interests: List[str] = Field(default_factory=list, description="User interests")
+
+# Create tool for specific model with distinct name
+user_tool = DataTransferTool.create(UserProfile, "UserProfileTool")
+
+# Use with an agent
+agent = Agent(
+    system_prompt="You are a data assistant for user profile transfers.",
+    tools=[user_tool]
+)
+
+# Transfer data through Claude
+result = await agent.run(
+    "Transfer user data: name='Alice Johnson', age=28, email='alice@example.com', "
+    "interests=['programming', 'hiking']"
+)
+
+# Retrieve validated data from host
+user_data = user_tool.get()
+if user_data:
+    print(f"Retrieved: {user_data.name}, age {user_data.age}")
+```
+
+**Advanced Data Types:**
+- **Nested Models**: Transfer complex data with embedded objects
+- **Lists of Models**: Handle arrays of structured data
+- **Dictionary Models**: Transfer data with model values in dictionaries
+- **Field Constraints**: Automatic validation with Pydantic constraints
+
+**Common Use Cases:**
+- **Form Data Transfer**: Collect and validate user input through conversational interface
+- **API Data Exchange**: Transfer structured data between systems with validation
+- **Configuration Transfer**: Pass complex settings with type safety
+- **Data Pipeline**: Move validated data between processing stages
+- **Multi-Model Workflows**: Use different tools for different data types in same session
+
+**Factory Method:**
+```python
+# Create tools for different models with distinct identities
+user_tool = DataTransferTool.create(UserProfile, "UserTool")
+product_tool = DataTransferTool.create(ProductInfo, "ProductTool")
+order_tool = DataTransferTool.create(Order, "OrderTool")  # Nested models
+
+# Each appears as a completely different tool to Claude
+agent = Agent(tools=[user_tool, product_tool, order_tool])
+```
+
+**Host Integration:**
+```python
+# Simple retrieval interface
+user_data = user_tool.get()              # Get transferred data
+has_data = user_tool.has_data()          # Check if data exists
+user_tool.clear()                        # Clear stored data
+schema = user_tool.get_schema()          # Get JSON schema
+json_data = user_tool.to_json()          # Get as JSON string
+```
 
 ### Using Tools with Agents
 
