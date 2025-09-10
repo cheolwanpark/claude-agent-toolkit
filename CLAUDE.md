@@ -31,6 +31,10 @@ Claude Agent Toolkit implements a flexible architecture supporting both Docker-i
 │      │                       │                                         │
 │      └─ SubprocessExecutor ───┼───────┐                                 │
 │                               │       │                                 │
+│  Built-in Tools (tools/)      │       │                                 │
+│  ├─ FileSystemTool            │       │                                 │
+│  └─ [Future Tools]            │       │                                 │
+│                               │       │                                 │
 └───────────────────────────────┼───────┼─────────────────────────────────┘
                                 │       │                                  
 ┌──────────────────────────────┼───────┼─────────────────────────────────┐
@@ -67,6 +71,12 @@ Claude Agent Toolkit implements a flexible architecture supporting both Docker-i
 - **@tool decorator** (`decorator.py`): Method decorator that registers MCP tools with rich configuration
 - **MCPServer** (`server.py`): HTTP server implementation using FastMCP with automatic port selection
 - **WorkerManager** (`worker.py`): ProcessPoolExecutor manager for parallel operations
+
+#### Built-in Tools (`src/claude_agent_toolkit/tools/`)
+- **Purpose**: Pre-built tool implementations ready for immediate use
+- **Structure**: Each tool is a standalone module inheriting from BaseTool
+- **Import Pattern**: Clean imports via package `__init__.py` exports
+- **Development**: Follow same patterns as custom tools in examples
 
 #### Executor Architecture
 
@@ -160,6 +170,33 @@ agent = Agent(tools=[my_tool], executor=ExecutorType.SUBPROCESS)
 4. MCP tools accessed via localhost URLs
 5. ResponseHandler processes streaming results and returns response
 
+### Built-in Tools Development Pattern
+
+The framework includes pre-built tools in `src/claude_agent_toolkit/tools/` that follow the same development patterns as custom tools:
+
+#### Directory Structure
+```
+src/claude_agent_toolkit/tools/
+├── __init__.py          # Package exports for clean imports
+├── filesystem.py        # FileSystemTool implementation
+└── [future_tools.py]    # Additional built-in tools
+```
+
+#### Import Conventions
+```python
+# Built-in tools use clean package imports
+from claude_agent_toolkit.tools import FileSystemTool
+
+# Custom tools use direct module imports
+from my_project.tools import MyCustomTool
+```
+
+#### Development Guidelines
+- **Same Patterns**: Built-in tools follow identical patterns to examples
+- **Standalone Modules**: Each tool is self-contained with minimal dependencies
+- **BaseTool Inheritance**: All tools inherit from the same BaseTool class
+- **Standard Decorators**: Use the same @tool decorator with consistent parameters
+
 ## Development Commands
 
 ### Setup and Running
@@ -177,6 +214,8 @@ cd src/examples/calculator && python main.py
 cd src/examples/weather && python main.py
 # Subprocess example (no Docker required):
 cd src/examples/subprocess && python main.py
+# Filesystem example (demonstrates built-in tools):
+cd src/examples/filesystem && python main.py
 ```
 
 ## Configuration

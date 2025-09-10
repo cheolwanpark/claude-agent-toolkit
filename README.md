@@ -58,12 +58,15 @@ cd src/examples/calculator && python main.py
 cd src/examples/weather && python main.py
 # Subprocess example (no Docker required):
 cd src/examples/subprocess && python main.py
+# Filesystem example (with FileSystemTool):
+cd src/examples/filesystem && python main.py
 ```
 
 This will run demonstration examples:
 1. **Calculator Demo** - Shows stateful operations, parallel processing (factorial, fibonacci, prime checking), and mathematical problem solving
 2. **Weather Demo** - Demonstrates external API integration with real-time data and async operations
 3. **Subprocess Demo** - Shows subprocess executor usage without Docker dependency
+4. **Filesystem Demo** - Demonstrates FileSystemTool with pattern-based permissions and agent integration
 
 ### Executor Options
 
@@ -139,6 +142,68 @@ with MyTool(host="127.0.0.1", port=8080, workers=4, log_level="INFO") as tool:
     print(f"Task result: {result}")
 # Guaranteed cleanup even if exceptions occur
 ```
+
+## Built-In Tools
+
+Claude Agent Toolkit includes ready-to-use tools that extend your agents' capabilities:
+
+### FileSystemTool
+
+Secure filesystem access with pattern-based permissions - control exactly what files your agent can read, write, or modify.
+
+**Key Features:**
+- Pattern-based permissions using glob patterns (`*.txt`, `data/**`, `logs/*.log`)
+- Four operations: `list()`, `read()`, `write()`, `update()`
+- Security: Path traversal prevention and root directory containment
+- Conflict resolution: Write permission takes precedence over read
+
+**Basic Usage:**
+
+```python
+from claude_agent_toolkit import Agent
+from claude_agent_toolkit.tools import FileSystemTool
+
+# Define permission rules
+permissions = [
+    ("*.txt", "read"),          # Read all text files
+    ("data/**", "write"),       # Write access to data directory
+    ("logs/*.log", "read"),     # Read-only log files
+    ("secrets/*", "read"),      # Read secrets directory
+]
+
+# Create filesystem tool with permissions
+fs_tool = FileSystemTool(
+    permissions=permissions,
+    root_dir="/path/to/workspace"  # Restrict to specific directory
+)
+
+# Use with an agent
+agent = Agent(
+    system_prompt="You are a file manager assistant",
+    tools=[fs_tool]
+)
+
+result = await agent.run(
+    "List all text files, read the latest log, and create a summary in data/report.txt"
+)
+```
+
+**Permission Patterns:**
+- `*.extension` - Match files by extension anywhere
+- `dir/*` - Match files directly in a directory
+- `dir/**` - Match all files recursively in a directory
+- `specific/file.txt` - Match a specific file
+
+**Common Use Cases:**
+- **Log Analysis**: Read-only access to log files for monitoring and analysis
+- **Data Processing**: Read input files, write results to specific directories
+- **Configuration Management**: Controlled access to config files
+- **Report Generation**: Read from multiple sources, write reports to designated locations
+
+**Security Notes:**
+- All paths are confined to the specified `root_dir`
+- Path traversal attempts (`../`) are blocked
+- When permissions conflict, write permission wins (write includes read)
 
 ### Using Tools with Agents
 
