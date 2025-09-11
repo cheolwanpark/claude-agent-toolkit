@@ -40,7 +40,7 @@ uv add claude-agent-toolkit
 # Using poetry
 poetry add claude-agent-toolkit
 
-# Set your OAuth token
+# Set your OAuth token, from `claude setup-token` command
 export CLAUDE_CODE_OAUTH_TOKEN='your-token-here'
 ```
 
