@@ -92,41 +92,47 @@ class Agent:
     async def _discover_tools(self) -> List[str]:
         """
         Discover all available tools from connected MCP servers.
-        
+
         Returns:
             List of tool IDs in the format mcp__servername__toolname
-            
+
         Note:
             Uses graceful error handling - continues discovery even if some servers fail
         """
         all_tools = []
         tool_instances = self.tool_connector.get_connected_tool_instances()
         successful_discoveries = 0
-        
+
         for tool_name, tool in tool_instances.items():
             try:
                 logger.debug("Discovering tools from %s", tool_name)
-                tool_infos = await list_tools(tool)
-                
+
+                # Convert BaseTool to McpServerConfig
+                from ..tool.utils import tool_to_config
+                config = tool_to_config(tool)
+
+                # Use tool_name as the server_name for consistency
+                tool_infos = await list_tools(config, server_name=tool_name)
+
                 for info in tool_infos:
                     all_tools.append(info.mcp_tool_id)
                     logger.debug("Discovered tool: %s", info.mcp_tool_id)
-                
+
                 logger.info("Discovered %d tools from %s", len(tool_infos), tool_name)
                 successful_discoveries += 1
-                
+
             except Exception as e:
                 logger.warning("Failed to discover tools from %s: %s", tool_name, e)
                 logger.debug("Tool discovery error details for %s", tool_name, exc_info=True)
                 # Continue with other tools instead of failing completely
                 continue
-        
-        logger.info("Total discovered tools: %d from %d/%d servers", 
+
+        logger.info("Total discovered tools: %d from %d/%d servers",
                    len(all_tools), successful_discoveries, len(tool_instances))
-        
+
         if successful_discoveries == 0 and len(tool_instances) > 0:
             logger.warning("No tools discovered from any connected servers - agent will have limited functionality")
-        
+
         return all_tools
     
     async def run(
