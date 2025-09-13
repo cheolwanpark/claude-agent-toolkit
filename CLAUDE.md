@@ -17,14 +17,16 @@ Custom MCP tools run as HTTP servers on host machine. Claude Code executes in Do
 - **Agent** (`core.py`): Main orchestrator managing agent lifecycle
 - **Executors**: DockerExecutor (production) or SubprocessExecutor (development)
 - **ToolConnector**: Manages MCP tool server connections
-- **BaseTool**: Base class for custom tools with @tool decorator
+- **AbstractTool**: Base interface for all MCP tools (internal and external)
+- **BaseTool**: HTTP-based MCP tool class for custom tools with @tool decorator
+- **MCPTool Classes**: `StdioMCPTool`, `HttpMCPTool` for external MCP server integration
 - **MCPServer**: FastMCP HTTP server with auto port selection
 - **Built-in Tools**: FileSystemTool, DataTransferTool
 
 ### Executors
 
 **DockerExecutor (Default - Production)**:
-- Pre-built image: `cheolwanpark/claude-agent-toolkit:0.1.4`
+- Pre-built image: `cheolwanpark/claude-agent-toolkit:0.2.2`
 - Full isolation with host networking for MCP access
 - Automatic version matching between package and Docker image
 
@@ -57,12 +59,18 @@ class MyTool(BaseTool):
 ### Agent Usage
 ```python
 from claude_agent_toolkit import Agent, ExecutorType
+from claude_agent_toolkit.tool.mcp import StdioMCPTool, HttpMCPTool
 
 # Docker executor (default)
 agent = Agent(tools=[MyTool()])
 
 # Subprocess executor (faster startup)
 agent = Agent(tools=[MyTool()], executor=ExecutorType.SUBPROCESS)
+
+# External MCP server integration
+stdio_tool = StdioMCPTool(command="node", args=["server.js"], name="my-server")
+http_tool = HttpMCPTool(url="http://localhost:8080/mcp", name="http-server")
+agent = Agent(tools=[MyTool(), stdio_tool, http_tool])
 
 result = await agent.run("Process my data")
 ```
@@ -108,6 +116,40 @@ git tag v0.1.2b1 && git push origin v0.1.2b1
 git tag v0.1.2 && git push origin v0.1.2
 ```
 
+## External MCP Server Integration
+
+### Tool Architecture
+The framework now supports both internal and external MCP tools through a unified `AbstractTool` interface:
+- **BaseTool**: HTTP-based tools you create with @tool decorator
+- **StdioMCPTool**: Connect to external MCP servers via stdin/stdout
+- **HttpMCPTool**: Connect to external MCP servers via HTTP
+
+### External Tool Classes
+```python
+from claude_agent_toolkit.tool.mcp import StdioMCPTool, HttpMCPTool
+
+# Stdio transport (most common)
+stdio_tool = StdioMCPTool(
+    command="npx",
+    args=["-y", "@modelcontextprotocol/server-everything"],
+    name="everything-server"
+)
+
+# HTTP transport
+http_tool = HttpMCPTool(
+    url="http://localhost:3001/mcp",
+    name="my-http-server"
+)
+
+# Use with agent like any other tool
+agent = Agent(tools=[stdio_tool, http_tool])
+```
+
+### Transport Support
+- **Stdio**: Direct command execution with stdin/stdout communication
+- **HTTP**: REST-style HTTP endpoints for MCP protocol
+- **Mixed Mode**: Combine internal BaseTool instances with external MCP servers
+
 ## Key Concepts
 
 ### Data Management
@@ -149,6 +191,25 @@ await agent.run(prompt: str, verbose: bool = False, model: str = None) -> str
     description: str = "",   # Required for Claude Code
     parallel: bool = False,  # True = sync function, False = async function
     timeout_s: int = 60      # Timeout for parallel operations
+)
+```
+
+### External MCP Tool Classes
+```python
+from claude_agent_toolkit.tool.mcp import StdioMCPTool, HttpMCPTool
+
+# Stdio MCP Tool
+StdioMCPTool(
+    command: str,                    # Command to execute (e.g., "node", "python")
+    args: List[str] = None,          # Arguments for the command
+    env: Dict[str, str] = None,      # Environment variables
+    name: str = None                 # Tool identifier (defaults to command name)
+)
+
+# HTTP MCP Tool
+HttpMCPTool(
+    url: str,                        # HTTP endpoint URL
+    name: str = None                 # Tool identifier (defaults to hostname)
 )
 ```
 
@@ -198,7 +259,7 @@ result = await agent.run("prompt", verbose=True)
 
 ### Performance
 - Use `parallel=True` for CPU-intensive sync functions
-- Pre-pull Docker image: `docker pull cheolwanpark/claude-agent-toolkit:0.1.4`
+- Pre-pull Docker image: `docker pull cheolwanpark/claude-agent-toolkit:0.2.2`
 - Manage your own data explicitly - no hidden state
 
 ### Security

@@ -1,8 +1,8 @@
 # Claude Agent Toolkit
 
-**Simplified AI agent development with decorator-based tools and isolated execution**
+**Simplified AI agent development with decorator-based tools and external MCP server integration**
 
-A Python framework that solves the complexity of claude-code-sdk tool integration through an intuitive decorator-based approach. Created to provide a stable, consistent development experience similar to Google's Agent Development Kit (ADK), this toolkit enables effortless creation of Claude Code agents with custom MCP tools.
+A Python framework that solves the complexity of claude-code-sdk tool integration through an intuitive decorator-based approach. Created to provide a stable, consistent development experience similar to Google's Agent Development Kit (ADK), this toolkit enables effortless creation of Claude Code agents with custom MCP tools and seamless integration with existing MCP servers.
 
 ## Table of Contents
 
@@ -242,6 +242,7 @@ except ExecutionError as e:
 ## Core Features
 
 - **🎯 Decorator-Based Tools** - Transform any Python function into a Claude tool with simple `@tool` decorator
+- **🔌 External MCP Integration** - Connect to existing MCP servers via stdio and HTTP transports
 - **🐳 Isolated Execution** - Docker containers ensure consistent behavior across all environments
 - **⚡ Zero Configuration** - Automatic MCP server management, port selection, and tool discovery
 - **🔧 Flexible Execution Modes** - Choose Docker isolation (production) or subprocess (development)
@@ -275,6 +276,53 @@ except ExecutionError as e:
 │   (localhost)   │    │   or Subprocess  │    │   (claude.ai)   │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
 ```
+
+## External MCP Server Integration
+
+### Connect to Existing MCP Servers
+
+Integrate with any existing MCP server using stdio or HTTP transport:
+
+```python
+from claude_agent_toolkit import Agent
+from claude_agent_toolkit.tool.mcp import StdioMCPTool, HttpMCPTool
+
+# Connect to an MCP server via command execution
+everything_server = StdioMCPTool(
+    command="npx",
+    args=["-y", "@modelcontextprotocol/server-everything"],
+    name="everything"
+)
+
+# Connect to an HTTP MCP server
+http_server = HttpMCPTool(
+    url="http://localhost:3001/mcp",
+    name="my-http-server"
+)
+
+# Mix with your custom tools
+agent = Agent(
+    system_prompt="You can use both custom and external tools",
+    tools=[MyCustomTool(), everything_server, http_server]
+)
+
+result = await agent.run("Use the everything server to echo 'Hello World'")
+```
+
+### When to Use External MCP Integration
+
+- **Existing MCP Ecosystem**: Leverage community MCP servers and tools
+- **Language Diversity**: Use MCP servers written in Node.js, Python, Go, etc.
+- **Specialized Tools**: Integrate domain-specific tools without reimplementation
+- **Rapid Prototyping**: Quickly test MCP servers before building custom equivalents
+- **Service Architecture**: Connect to MCP servers running as microservices
+
+### Supported Transports
+
+| Transport | Use Case | Example |
+|-----------|----------|---------|
+| **Stdio** | Command-line tools, npm packages | `npx` servers, Python scripts |
+| **HTTP** | Web services, microservices | REST APIs, containerized servers |
 
 ## Built-in Tools
 
@@ -457,6 +505,7 @@ cd src/examples/weather && python main.py       # External API integration
 cd src/examples/subprocess && python main.py    # No Docker required
 cd src/examples/filesystem && python main.py    # Permission-based file access
 cd src/examples/datatransfer && python main.py  # Type-safe data transfer
+cd src/examples/mcp && python main.py           # External MCP server integration
 ```
 
 ### Example Structure
@@ -468,7 +517,8 @@ src/examples/
 ├── subprocess/     # Subprocess executor demonstration
 ├── filesystem/     # FileSystemTool with permissions
 ├── datatransfer/   # DataTransferTool with Pydantic models
-└── README.md       # Detailed example documentation
+├── mcp/           # External MCP server integration (stdio, HTTP)
+└── README.md      # Detailed example documentation
 ```
 
 ### Docker Validation
