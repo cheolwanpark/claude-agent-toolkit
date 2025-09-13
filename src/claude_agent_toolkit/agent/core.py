@@ -107,12 +107,8 @@ class Agent:
             try:
                 logger.debug("Discovering tools from %s", tool_name)
 
-                # Convert BaseTool to McpServerConfig
-                from ..tool.utils import tool_to_config
-                config = tool_to_config(tool)
-
-                # Use tool_name as the server_name for consistency
-                tool_infos = await list_tools(config, server_name=tool_name)
+                # Use the tool directly with the new list_tools function
+                tool_infos = await list_tools(tool)
 
                 for info in tool_infos:
                     all_tools.append(info.mcp_tool_id)
@@ -164,7 +160,7 @@ class Agent:
         return await self.executor.run(
             prompt=prompt,
             oauth_token=self.oauth_token,
-            tool_urls=self.tool_connector.get_connected_tools(),
+            mcp_servers=self.tool_connector.get_connected_tools(),
             allowed_tools=allowed_tools,
             system_prompt=self.system_prompt,
             verbose=verbose,

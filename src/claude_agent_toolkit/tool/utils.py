@@ -15,7 +15,7 @@ from claude_code_sdk.types import (
     McpSdkServerConfig
 )
 
-from .base import BaseTool
+# Removed direct import to avoid circular import - imported dynamically where needed
 from ..exceptions import ConnectionError, ExecutionError
 from ..logging import get_logger
 
@@ -52,47 +52,44 @@ def _convert_to_tool_infos(tools_response, server_name: str) -> List[ToolInfo]:
     return tool_infos
 
 
-def tool_to_config(tool: BaseTool) -> McpHttpServerConfig:
-    """Convert BaseTool instance to McpHttpServerConfig for backward compatibility."""
-    if not hasattr(tool, 'connection_url'):
-        raise ConnectionError("Tool must have 'connection_url' property")
-
-    return {
-        "type": "http",
-        "url": tool.connection_url
-    }
+# Removed tool_to_config function - replaced by tool.config() method
 
 
-async def list_tools(
-    config: McpServerConfig,
-    server_name: str
-) -> List[ToolInfo]:
+async def list_tools(tool) -> List[ToolInfo]:
     """
-    List available tools from an MCP server.
+    List available tools from an MCP tool/server.
 
-    Supports stdio, HTTP, and SSE transports via McpServerConfig.
+    Supports stdio, HTTP, and SSE transports via tool.config() method.
 
     Args:
-        config: MCP server configuration from claude-code-sdk
-        server_name: Server name for tool ID generation (e.g., "playwright")
+        tool: AbstractTool instance with config() and name() methods
 
     Returns:
         List of ToolInfo objects with server_name and tool_name
 
     Raises:
-        ConnectionError: If the server configuration is invalid
+        ConnectionError: If the tool configuration is invalid
         ExecutionError: If unable to retrieve tools from the server
         NotImplementedError: If config type is not supported
 
     Example:
-        # Stdio server
-        config = {"command": "npx", "args": ["@playwright/mcp@latest"]}
-        tools = await list_tools(config, server_name="playwright")
+        # Using a BaseTool (HTTP-based)
+        my_tool = MyBaseTool()
+        tools = await list_tools(my_tool)
 
-        # HTTP server
-        config = {"type": "http", "url": "http://localhost:8080/mcp"}
-        tools = await list_tools(config, server_name="myserver")
+        # Using external MCP server wrapper
+        external_tool = ExternalMcpTool()
+        tools = await list_tools(external_tool)
     """
+    # Import here to avoid circular imports
+    from .abstract import AbstractTool
+
+    if not isinstance(tool, AbstractTool):
+        raise ConnectionError("Tool must be an instance of AbstractTool")
+
+    config = tool.config()
+    server_name = tool.name()
+
     logger.debug(f"Connecting to MCP server for {server_name}")
 
     # Use isolated async context to avoid cross-task violations

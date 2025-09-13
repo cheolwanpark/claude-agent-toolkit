@@ -15,7 +15,7 @@ async def main():
     
     # Get configuration from environment variables
     prompt = os.environ.get('AGENT_PROMPT', '')
-    tools_json = os.environ.get('MCP_TOOLS', '{}')
+    mcp_servers_json = os.environ.get('MCP_SERVERS', '{}')
     allowed_tools_json = os.environ.get('ALLOWED_TOOLS', '[]')
     oauth_token = os.environ.get('CLAUDE_CODE_OAUTH_TOKEN', '')
     system_prompt = os.environ.get('AGENT_SYSTEM_PROMPT')
@@ -29,12 +29,12 @@ async def main():
         print("ERROR: No OAuth token provided - CLAUDE_CODE_OAUTH_TOKEN environment variable is empty", file=sys.stderr, flush=True)
         return
     
-    # Parse tools configuration
+    # Parse MCP servers configuration
     try:
-        tool_urls = json.loads(tools_json)
+        mcp_servers = json.loads(mcp_servers_json)
     except json.JSONDecodeError as e:
-        print(f"[entrypoint] Warning: Invalid JSON in MCP_TOOLS: {e}", file=sys.stderr, flush=True)
-        tool_urls = {}
+        print(f"[entrypoint] Warning: Invalid JSON in MCP_SERVERS: {e}", file=sys.stderr, flush=True)
+        mcp_servers = {}
     
     # Parse allowed tools list
     try:
@@ -43,36 +43,28 @@ async def main():
         print(f"[entrypoint] Warning: Invalid JSON in ALLOWED_TOOLS: {e}", file=sys.stderr, flush=True)
         allowed_tools = []
     
-    # Configure MCP servers using HTTP configuration
-    mcp_servers = {}
-    if tool_urls:
-        # Create proper HTTP MCP server configuration for each tool
-        for tool_name, tool_url in tool_urls.items():
-            # Use the HTTP configuration type
-            mcp_servers[tool_name.lower()] = {
-                "type": "http",
-                "url": tool_url,
-                "headers": {}  # Add any necessary headers here
-            }
-            print(f"[entrypoint] Configured HTTP MCP server {tool_name} at {tool_url}", file=sys.stderr, flush=True)
-            
-            # Test connectivity to MCP server
-            try:
-                import httpx
-                with httpx.Client(timeout=5.0) as client:
-                    health_url = tool_url.replace('/mcp', '/health')
-                    response = client.get(health_url)
-                    print(f"[entrypoint] Health check for {tool_name}: {response.status_code}", file=sys.stderr, flush=True)
-            except httpx.TimeoutException:
-                print(f"[entrypoint] Health check timeout for {tool_name}", file=sys.stderr, flush=True)
-            except httpx.RequestError as e:
-                print(f"[entrypoint] Health check connection error for {tool_name}: {e}", file=sys.stderr, flush=True)
-            except Exception as e:
-                print(f"[entrypoint] Health check failed for {tool_name}: {e}", file=sys.stderr, flush=True)
+    # Use MCP servers configuration directly - no need to build it
+    if mcp_servers:
+        for server_name, config in mcp_servers.items():
+            print(f"[entrypoint] Using MCP server {server_name} with config: {config}", file=sys.stderr, flush=True)
+
+            # Test connectivity for HTTP-based servers
+            if config.get("type") == "http":
+                try:
+                    import httpx
+                    with httpx.Client(timeout=5.0) as client:
+                        health_url = config["url"].replace('/mcp', '/health')
+                        response = client.get(health_url)
+                        print(f"[entrypoint] Health check for {server_name}: {response.status_code}", file=sys.stderr, flush=True)
+                except httpx.TimeoutException:
+                    print(f"[entrypoint] Health check timeout for {server_name}", file=sys.stderr, flush=True)
+                except httpx.RequestError as e:
+                    print(f"[entrypoint] Health check connection error for {server_name}: {e}", file=sys.stderr, flush=True)
+                except Exception as e:
+                    print(f"[entrypoint] Health check failed for {server_name}: {e}", file=sys.stderr, flush=True)
     
     # Setup Claude Code options with proper MCP configuration
     print(f"[entrypoint] MCP servers config: {json.dumps(mcp_servers, indent=2)}", file=sys.stderr, flush=True)
-    print(f"[entrypoint] Tool URLs: {json.dumps(tool_urls, indent=2)}", file=sys.stderr, flush=True)
     print(f"[entrypoint] Allowed tools: {json.dumps(allowed_tools, indent=2)}", file=sys.stderr, flush=True)
     print(f"[entrypoint] Using model: {model}", file=sys.stderr, flush=True)
     

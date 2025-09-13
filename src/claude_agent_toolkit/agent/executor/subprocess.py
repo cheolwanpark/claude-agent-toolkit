@@ -4,7 +4,7 @@
 import json
 import os
 import tempfile
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from claude_code_sdk import query, ClaudeCodeOptions
 
@@ -31,30 +31,30 @@ class SubprocessExecutor(BaseExecutor):
         logger.debug("Initialized SubprocessExecutor")
     
     async def run(
-        self, 
-        prompt: str, 
-        oauth_token: str, 
-        tool_urls: Dict[str, str], 
-        allowed_tools: Optional[List[str]] = None, 
-        system_prompt: Optional[str] = None, 
-        verbose: bool = False, 
+        self,
+        prompt: str,
+        oauth_token: str,
+        mcp_servers: Dict[str, Any],
+        allowed_tools: Optional[List[str]] = None,
+        system_prompt: Optional[str] = None,
+        verbose: bool = False,
         model: Optional[str] = None
     ) -> str:
         """
-        Execute prompt using claude-code-sdk directly with connected tools.
-        
+        Execute prompt using claude-code-sdk directly with connected MCP servers.
+
         Args:
             prompt: The instruction for Claude
             oauth_token: Claude Code OAuth token
-            tool_urls: Dictionary of tool_name -> url mappings
+            mcp_servers: Dictionary of server_name -> McpServerConfig mappings
             allowed_tools: List of allowed tool IDs (mcp__servername__toolname format)
             system_prompt: Optional system prompt to customize agent behavior
             verbose: If True, enable verbose output
             model: Optional model to use for this execution
-            
+
         Returns:
             Response string from Claude
-            
+
         Raises:
             ConfigurationError: If OAuth token or configuration is invalid
             ExecutionError: If execution fails
@@ -68,7 +68,7 @@ class SubprocessExecutor(BaseExecutor):
         return await self._run_claude_code_sdk(
             prompt=prompt,
             oauth_token=oauth_token,
-            tool_urls=tool_urls,
+            mcp_servers=mcp_servers,
             allowed_tools=allowed_tools,
             system_prompt=system_prompt,
             verbose=verbose,
@@ -164,7 +164,7 @@ class SubprocessExecutor(BaseExecutor):
         self,
         prompt: str,
         oauth_token: str,
-        tool_urls: Dict[str, str],
+        mcp_servers: Dict[str, Any],
         allowed_tools: Optional[List[str]] = None,
         system_prompt: Optional[str] = None,
         verbose: bool = False,
@@ -183,21 +183,9 @@ class SubprocessExecutor(BaseExecutor):
             if model:
                 final_model = MODEL_ID_MAPPING.get(model, model)
             
-            # Configure MCP servers using HTTP configuration
-            mcp_servers = {}
-            if tool_urls:
-                for tool_name, tool_url in tool_urls.items():
-                    # Use localhost URLs directly (no Docker host mapping needed)
-                    mcp_servers[tool_name.lower()] = {
-                        "type": "http",
-                        "url": tool_url,
-                        "headers": {}
-                    }
-                    if verbose:
-                        logger.info("Configured HTTP MCP server %s at %s", tool_name, tool_url)
-            
+            # Use MCP server configurations directly
             if verbose:
-                logger.info("Connected tools: %s", list(tool_urls.keys()) if tool_urls else [])
+                logger.info("Connected MCP servers: %s", list(mcp_servers.keys()) if mcp_servers else [])
                 if allowed_tools:
                     logger.info("Allowed tools: %d tools discovered", len(allowed_tools))
                 logger.info("Using model: %s", final_model)
