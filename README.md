@@ -1,98 +1,348 @@
-# Claude Code Agent Toolkit (claude-agent-toolkit)
+# Claude Agent Toolkit
 
-A Python framework for building Claude Code agents with custom tools, designed to leverage Claude Code's advanced reasoning capabilities with your subscription token. The framework provides Docker-isolated environments where Claude Code can orchestrate custom MCP tools for production workflows.
+**Simplified AI agent development with decorator-based tools and isolated execution**
 
-## Key Features
+A Python framework that solves the complexity of claude-code-sdk tool integration through an intuitive decorator-based approach. Created to provide a stable, consistent development experience similar to Google's Agent Development Kit (ADK), this toolkit enables effortless creation of Claude Code agents with custom MCP tools.
 
-- **Claude Code Integration** - Leverage Claude Code's advanced reasoning with your existing subscription token
-- **Flexible Execution Modes** - Choose between Docker isolation or direct subprocess execution
-- **Explicit Data Management** - Users control their own data without automatic state management  
-- **CPU-bound Operations** - Support for CPU-intensive operations with process pools and parallel execution
-- **Multi-tool Coordination** - Claude Code orchestrates multiple tools in complex workflows
-- **Production Ready** - Build scalable agents using Claude Code's capabilities with custom tool integration
+## Table of Contents
 
-## Architecture
+- [Why Claude Agent Toolkit?](#why-claude-agent-toolkit)
+- [When Should You Use This?](#when-should-you-use-this)
+- [Quick Start](#quick-start)
+- [Installation & Setup](#installation--setup)
+- [Usage Examples](#usage-examples)
+- [Core Features](#core-features)
+- [Architecture](#architecture)
+- [Built-in Tools](#built-in-tools)
+- [Creating Custom Tools](#creating-custom-tools)
+- [FAQ](#faq)
+- [Testing](#testing)
+- [Contributing](#contributing)
+- [License](#license)
 
-### Core Components
+## Why Claude Agent Toolkit?
 
-- **Agent Framework** - Main Agent class supporting Docker or subprocess execution with MCP tool integration
-- **MCP Tool Framework** - BaseTool class for creating custom tools with explicit data management
-- **Example Tools** - Demonstration tools showing practical agent development patterns
-- **Execution Modes** - Docker isolation or direct subprocess execution for different use cases
+### The Problem
+Working directly with claude-code-sdk presents two major challenges:
+1. **Complex Tool Integration** - Manual MCP server setup, connection handling, and tool registration
+2. **Inconsistent Execution** - Different local environments causing unpredictable behavior
+
+### The Solution
+Claude Agent Toolkit solves these issues through:
+- **🎯 Decorator-Based Tools** - Simple `@tool` decorator converts any Python function into a Claude-compatible tool
+- **🐳 Isolated Execution** - Docker containers ensure consistent behavior across all environments
+- **⚡ Zero Configuration** - Automatic MCP server management and tool discovery
+
+*"An intuitive and stable development experience similar to Google's ADK"* - [Cheolwan Park, Creator](https://blog.codingvillain.com/post/claude-agent-toolkit)
+
+### Before vs After
+
+**Before (Direct claude-code-sdk):**
+```python
+# Complex MCP server setup
+# Manual connection management
+# Environment-specific configurations
+# Inconsistent tool behavior
+```
+
+**After (Claude Agent Toolkit):**
+```python
+class CalculatorTool(BaseTool):
+    @tool(description="Adds two numbers together")
+    async def add(self, a: float, b: float) -> dict:
+        return {"result": a + b}
+
+agent = Agent(tools=[CalculatorTool()])
+```
+
+## When Should You Use This?
+
+> **Update**: Recent updates to claude-code-sdk have simplified tool addition significantly. This has substantially reduced the necessity for Claude Agent Toolkit compared to when it was first created.
+
+### Use claude-code-sdk When:
+- Building simple agents with basic tooling needs
+- Rapid prototyping and experimentation
+- Utilizing local environment configurations
+- Working with subprocess execution only
+
+### Use Claude Agent Toolkit When:
+- **Isolated Execution Required** - Docker containers for production consistency
+- **CPU-Intensive Tools** - Parallel execution in separate process pools with `parallel=True`
+- **Production Environments** - Consistent execution across different deployments
+- **Complex Tool Orchestration** - Multiple tools with state management
+
+### Quick Comparison
+
+| Feature | claude-code-sdk | Claude Agent Toolkit |
+|---------|----------------|---------------------|
+| **Setup Complexity** | Simple (recent updates) | Minimal with decorators |
+| **Execution** | Same process | Docker/Subprocess isolation |
+| **CPU-Intensive Tasks** | Blocking | Parallel with `parallel=True` |
+| **Environment Consistency** | Variable | Guaranteed with Docker |
+| **Best For** | Prototyping, simple tools | Production, complex tools |
 
 ## Quick Start
+
+```python
+from claude_agent_toolkit import Agent, BaseTool, tool
+
+# 1. Create a custom tool with @tool decorator
+class CalculatorTool(BaseTool):
+    @tool(description="Adds two numbers together")
+    async def add(self, a: float, b: float) -> dict:
+        result = a + b
+        return {
+            "operation": f"{a} + {b}",
+            "result": result,
+            "message": f"The result of adding {a} and {b} is {result}"
+        }
+
+# 2. Create and run an agent
+async def main():
+    agent = Agent(
+        system_prompt="You are a helpful calculator assistant",
+        tools=[CalculatorTool()],
+        model="sonnet"  # haiku, sonnet, or opus
+    )
+
+    result = await agent.run("What is 15 + 27?")
+    print(result)  # Claude will use your tool and return the answer
+
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(main())
+```
+
+## Installation & Setup
 
 ### Prerequisites
 
 - **Python 3.12+** with `uv` package manager
-- **Docker Desktop** (must be running)
+- **Docker Desktop** (required for Docker executor, recommended)
 - **Claude Code OAuth Token** - Get from [Claude Code](https://claude.ai/code)
 
-### Installation
+### Install the Package
 
 ```bash
 # Using pip
 pip install claude-agent-toolkit
 
-# Using uv
+# Using uv (recommended)
 uv add claude-agent-toolkit
 
 # Using poetry
 poetry add claude-agent-toolkit
+```
 
-# Set your OAuth token, from `claude setup-token` command
+### Set Your OAuth Token
+
+Get your token by running `claude setup-token` in your terminal, then:
+
+```bash
 export CLAUDE_CODE_OAUTH_TOKEN='your-token-here'
 ```
 
-### Run the Demo
+### Quick Verification
 
 ```bash
-# Clone the repository for examples
+# Clone examples (optional)
 git clone https://github.com/cheolwanpark/claude-agent-toolkit.git
-cd claude-agent-toolkit
-
-# Start Docker Desktop first, then run the Docker examples
-# Calculator example (Docker executor):
-cd src/examples/calculator && python main.py
-# Weather example (Docker executor):
-cd src/examples/weather && python main.py
-# Subprocess example (no Docker required):
-cd src/examples/subprocess && python main.py
-# Filesystem example (with FileSystemTool):
-cd src/examples/filesystem && python main.py
-# DataTransfer example (with DataTransferTool):
-cd src/examples/datatransfer && python main.py
+cd claude-agent-toolkit/src/examples/calculator
+python main.py
 ```
 
-This will run demonstration examples:
-1. **Calculator Demo** - Shows stateful operations, parallel processing (factorial, fibonacci, prime checking), and mathematical problem solving
-2. **Weather Demo** - Demonstrates external API integration with real-time data and async operations
-3. **Subprocess Demo** - Shows subprocess executor usage without Docker dependency
-4. **Filesystem Demo** - Demonstrates FileSystemTool with pattern-based permissions and agent integration
-5. **DataTransfer Demo** - Shows DataTransferTool with type-safe data transfer, validation, and multi-model scenarios
+## Usage Examples
 
-### Executor Options
-
-- **Docker** (default): Isolated environment, requires Docker Desktop
-- **Subprocess**: Direct execution, faster startup (~0.5s vs ~3s)
-
-Choose based on your needs. Docker provides isolation for local testing, subprocess works well in clean production environments.
+### Basic Agent with Custom Tool
 
 ```python
-from claude_agent_toolkit import Agent, ExecutorType
+from claude_agent_toolkit import Agent, BaseTool, tool, ExecutorType
 
-# Default: Docker executor
-agent = Agent(tools=[my_tool])
+class MyTool(BaseTool):
+    def __init__(self):
+        super().__init__()
+        self.counter = 0  # Explicit data management
 
-# Alternative: Subprocess executor  
-agent = Agent(tools=[my_tool], executor=ExecutorType.SUBPROCESS)
+    @tool(description="Increment counter and return value")
+    async def increment(self) -> dict:
+        self.counter += 1
+        return {"value": self.counter}
+
+# Docker executor (default, production-ready)
+agent = Agent(tools=[MyTool()])
+
+# Subprocess executor (faster startup, development)
+agent = Agent(tools=[MyTool()], executor=ExecutorType.SUBPROCESS)
+
+result = await agent.run("Increment the counter twice")
 ```
 
-## Tool Development
+### Model Selection
 
-### Creating Custom Tools
+```python
+# Fast and efficient for simple tasks
+weather_agent = Agent(
+    tools=[weather_tool],
+    model="haiku"
+)
 
-Create tools by inheriting from `BaseTool` and using the `@tool()` decorator:
+# Balanced performance (default)
+general_agent = Agent(
+    tools=[calc_tool, weather_tool],
+    model="sonnet"
+)
+
+# Most capable for complex reasoning
+analysis_agent = Agent(
+    tools=[analysis_tool],
+    model="opus"
+)
+
+# Override per query
+result = await weather_agent.run(
+    "Complex weather pattern analysis",
+    model="opus"
+)
+```
+
+### CPU-Intensive Operations
+
+```python
+class HeavyComputeTool(BaseTool):
+    @tool(description="Heavy computation", parallel=True, timeout_s=120)
+    def process_data(self, data: str) -> dict:
+        # Sync function - runs in separate process
+        import time
+        time.sleep(5)  # Simulate heavy work
+        return {"processed": f"result_{data}"}
+```
+
+### Error Handling
+
+```python
+from claude_agent_toolkit import (
+    Agent, BaseTool,
+    ConfigurationError, ConnectionError, ExecutionError
+)
+
+try:
+    agent = Agent(tools=[MyTool()])
+    result = await agent.run("Process my request")
+
+except ConfigurationError as e:
+    print(f"Setup issue: {e}")  # Missing token, invalid config
+
+except ConnectionError as e:
+    print(f"Connection failed: {e}")  # Docker, network issues
+
+except ExecutionError as e:
+    print(f"Execution failed: {e}")  # Tool failures, timeouts
+```
+
+## Core Features
+
+- **🎯 Decorator-Based Tools** - Transform any Python function into a Claude tool with simple `@tool` decorator
+- **🐳 Isolated Execution** - Docker containers ensure consistent behavior across all environments
+- **⚡ Zero Configuration** - Automatic MCP server management, port selection, and tool discovery
+- **🔧 Flexible Execution Modes** - Choose Docker isolation (production) or subprocess (development)
+- **📝 Explicit Data Management** - You control data persistence with no hidden state
+- **⚙️ CPU-bound Operations** - Process pools for heavy computations with parallel processing
+- **🎭 Multi-tool Coordination** - Claude Code intelligently orchestrates multiple tools
+- **🏗️ Production Ready** - Built for scalable, reliable agent deployment
+
+## Architecture
+
+### Execution Modes
+
+| Feature | Docker (Default) | Subprocess |
+|---------|------------------|------------|
+| **Isolation** | Full container isolation | Process isolation only |
+| **Setup Time** | ~3 seconds | ~0.5 seconds |
+| **Use Case** | Production, testing | Development, CI/CD |
+| **Requirements** | Docker Desktop | None |
+
+### Component Overview
+
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Your Tools    │    │      Agent       │    │  Claude Code    │
+│  (MCP Servers)  │◄──►│   (Orchestrator) │◄──►│   (Reasoning)   │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+        │                       │                       │
+        ▼                       ▼                       ▼
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Host Process  │    │ Docker Container │    │ Claude Code API │
+│   (localhost)   │    │   or Subprocess  │    │   (claude.ai)   │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+```
+
+## Built-in Tools
+
+### FileSystemTool - Secure File Operations
+
+Control exactly what files your agent can access with pattern-based permissions.
+
+```python
+from claude_agent_toolkit.tools import FileSystemTool
+
+# Define access patterns
+permissions = [
+    ("*.txt", "read"),          # Read all text files
+    ("data/**", "write"),       # Write to data directory
+    ("logs/*.log", "read"),     # Read log files only
+]
+
+fs_tool = FileSystemTool(
+    permissions=permissions,
+    root_dir="/path/to/workspace"  # Restrict to directory
+)
+
+agent = Agent(
+    system_prompt="You are a file manager assistant",
+    tools=[fs_tool]
+)
+
+result = await agent.run(
+    "List all text files and create a summary in data/report.txt"
+)
+```
+
+### DataTransferTool - Type-Safe Data Transfer
+
+Transfer structured data between Claude agents and your application using Pydantic models.
+
+```python
+from claude_agent_toolkit.tools import DataTransferTool
+from pydantic import BaseModel, Field
+from typing import List
+
+class UserProfile(BaseModel):
+    name: str = Field(..., description="Full name")
+    age: int = Field(..., ge=0, le=150, description="Age in years")
+    interests: List[str] = Field(default_factory=list)
+
+# Create tool for specific model
+user_tool = DataTransferTool.create(UserProfile, "UserProfileTool")
+
+agent = Agent(
+    system_prompt="You handle user profile data transfers",
+    tools=[user_tool]
+)
+
+# Transfer data through Claude
+await agent.run(
+    "Transfer user: Alice Johnson, age 28, interests programming and hiking"
+)
+
+# Retrieve validated data
+user_data = user_tool.get()
+if user_data:
+    print(f"Retrieved: {user_data.name}, age {user_data.age}")
+```
+
+## Creating Custom Tools
+
+### Basic Tool Pattern
 
 ```python
 from claude_agent_toolkit import BaseTool, tool
@@ -100,510 +350,165 @@ from claude_agent_toolkit import BaseTool, tool
 class MyTool(BaseTool):
     def __init__(self):
         super().__init__()  # Server starts automatically
-        # Explicit data management - no automatic state management
-        self.counter = 0
-        self.operations = []
-    
-    @tool(description="Increment counter and return new value")
-    async def increment(self) -> dict:
-        self.counter += 1
-        return {"value": self.counter}
-    
-    @tool(description="Heavy computation with parallel processing", parallel=True, timeout_s=120)  
-    def compute_heavy(self, data: str) -> dict:
-        # CPU-intensive operation runs under ProcessPoolExecutor
-        # Note: ProcessPoolExecutor creates new instance, self.counter won't persist
+        self.data = {}      # Explicit data management
+
+    @tool(description="Async operation")
+    async def process_async(self, data: str) -> dict:
+        # Async operations for I/O, API calls
+        return {"result": f"processed_{data}"}
+
+    @tool(description="CPU-intensive operation", parallel=True, timeout_s=60)
+    def process_heavy(self, data: str) -> dict:
+        # Sync function - runs in separate process
+        # Note: New instance created, self.data won't persist
         import time
-        time.sleep(2)  # Simulate heavy computation
-        return {"processed": f"Heavy result for {data}", "parallel_execution": True}
+        time.sleep(2)
+        return {"result": f"heavy_{data}"}
 ```
 
 ### Context Manager Support
 
-For explicit resource management, use the context manager pattern:
-
 ```python
 # Single tool with guaranteed cleanup
-with MyTool(workers=2) as tool:
-    agent = Agent(tools=[tool], executor=ExecutorType.SUBPROCESS)
+with MyTool() as tool:
+    agent = Agent(tools=[tool])
     result = await agent.run("Process my data")
-    print(f"Result: {result}")
-# Server automatically cleaned up here
+# Server automatically cleaned up
 
-# Multiple tools in one statement
+# Multiple tools
 with MyTool() as calc_tool, WeatherTool() as weather_tool:
     agent = Agent(tools=[calc_tool, weather_tool])
-    result = await agent.run("Calculate something and check weather")
-    print(f"Result: {result}")
+    result = await agent.run("Calculate and check weather")
 # Both tools cleaned up automatically
-
-# Parameters can be passed to constructor
-with MyTool(host="127.0.0.1", port=8080, workers=4, log_level="INFO") as tool:
-    # Tool server starts immediately with specified configuration
-    agent = Agent(tools=[tool])
-    result = await agent.run("Heavy computation task", verbose=True)  # Prints to console
-    print(f"Task result: {result}")
-# Guaranteed cleanup even if exceptions occur
 ```
 
-## Built-In Tools
+## FAQ
 
-Claude Agent Toolkit includes ready-to-use tools that extend your agents' capabilities:
+### What is Claude Agent Toolkit?
 
-### FileSystemTool
+A Python framework that lets you build AI agents using Claude Code with custom tools. Unlike generic agent frameworks, this specifically leverages Claude Code's advanced reasoning capabilities with your existing subscription.
 
-Secure filesystem access with pattern-based permissions - control exactly what files your agent can read, write, or modify.
+### How is this different from other agent frameworks?
 
-**Key Features:**
-- Pattern-based permissions using glob patterns (`*.txt`, `data/**`, `logs/*.log`)
-- Four operations: `list()`, `read()`, `write()`, `update()`
-- Security: Path traversal prevention and root directory containment
-- Conflict resolution: Write permission takes precedence over read
+- **Uses Claude Code**: Leverages Claude's production infrastructure and reasoning
+- **MCP Protocol**: Industry-standard tool integration, not proprietary APIs
+- **Explicit Data**: You control data persistence, no hidden state management
+- **Production Focus**: Built for real deployment, not just experiments
 
-**Basic Usage:**
+### Do I need Docker?
+
+Docker is recommended for production but not required. Use `ExecutorType.SUBPROCESS` for development:
 
 ```python
-from claude_agent_toolkit import Agent
-from claude_agent_toolkit.tools import FileSystemTool
-
-# Define permission rules
-permissions = [
-    ("*.txt", "read"),          # Read all text files
-    ("data/**", "write"),       # Write access to data directory
-    ("logs/*.log", "read"),     # Read-only log files
-    ("secrets/*", "read"),      # Read secrets directory
-]
-
-# Create filesystem tool with permissions
-fs_tool = FileSystemTool(
-    permissions=permissions,
-    root_dir="/path/to/workspace"  # Restrict to specific directory
-)
-
-# Use with an agent
-agent = Agent(
-    system_prompt="You are a file manager assistant",
-    tools=[fs_tool]
-)
-
-result = await agent.run(
-    "List all text files, read the latest log, and create a summary in data/report.txt"
-)
+agent = Agent(tools=[my_tool], executor=ExecutorType.SUBPROCESS)
 ```
 
-**Permission Patterns:**
-- `*.extension` - Match files by extension anywhere
-- `dir/*` - Match files directly in a directory
-- `dir/**` - Match all files recursively in a directory
-- `specific/file.txt` - Match a specific file
+### Which model should I use?
 
-**Common Use Cases:**
-- **Log Analysis**: Read-only access to log files for monitoring and analysis
-- **Data Processing**: Read input files, write results to specific directories
-- **Configuration Management**: Controlled access to config files
-- **Report Generation**: Read from multiple sources, write reports to designated locations
+- **haiku**: Fast, cost-effective for simple operations
+- **sonnet**: Balanced performance, good default choice
+- **opus**: Maximum capability for complex reasoning
 
-**Security Notes:**
-- All paths are confined to the specified `root_dir`
-- Path traversal attempts (`../`) are blocked
-- When permissions conflict, write permission wins (write includes read)
+### How do I handle errors?
 
-### DataTransferTool
-
-Generic tool for transferring structured data between Claude agents and host applications using any Pydantic BaseModel.
-
-**Key Features:**
-- Generic implementation works with any Pydantic BaseModel subclass
-- Automatic schema inclusion in tool descriptions for Claude
-- Type-safe data validation and transfer with runtime validation
-- Dynamic class creation for distinct tool identities
-- Simple transfer/get interface for host applications
-
-**Basic Usage:**
+The framework provides specific exception types:
 
 ```python
-from claude_agent_toolkit import Agent
-from claude_agent_toolkit.tools import DataTransferTool
-from pydantic import BaseModel, Field
-
-# Define your data model
-class UserProfile(BaseModel):
-    name: str = Field(..., description="Full name of the user")
-    age: int = Field(..., ge=0, le=150, description="Age in years")
-    email: str = Field(..., description="Email address")
-    interests: List[str] = Field(default_factory=list, description="User interests")
-
-# Create tool for specific model with distinct name
-user_tool = DataTransferTool.create(UserProfile, "UserProfileTool")
-
-# Use with an agent
-agent = Agent(
-    system_prompt="You are a data assistant for user profile transfers.",
-    tools=[user_tool]
-)
-
-# Transfer data through Claude
-result = await agent.run(
-    "Transfer user data: name='Alice Johnson', age=28, email='alice@example.com', "
-    "interests=['programming', 'hiking']"
-)
-
-# Retrieve validated data from host
-user_data = user_tool.get()
-if user_data:
-    print(f"Retrieved: {user_data.name}, age {user_data.age}")
-```
-
-**Advanced Data Types:**
-- **Nested Models**: Transfer complex data with embedded objects
-- **Lists of Models**: Handle arrays of structured data
-- **Dictionary Models**: Transfer data with model values in dictionaries
-- **Field Constraints**: Automatic validation with Pydantic constraints
-
-**Common Use Cases:**
-- **Form Data Transfer**: Collect and validate user input through conversational interface
-- **API Data Exchange**: Transfer structured data between systems with validation
-- **Configuration Transfer**: Pass complex settings with type safety
-- **Data Pipeline**: Move validated data between processing stages
-- **Multi-Model Workflows**: Use different tools for different data types in same session
-
-**Factory Method:**
-```python
-# Create tools for different models with distinct identities
-user_tool = DataTransferTool.create(UserProfile, "UserTool")
-product_tool = DataTransferTool.create(ProductInfo, "ProductTool")
-order_tool = DataTransferTool.create(Order, "OrderTool")  # Nested models
-
-# Each appears as a completely different tool to Claude
-agent = Agent(tools=[user_tool, product_tool, order_tool])
-```
-
-**Host Integration:**
-```python
-# Simple retrieval interface
-user_data = user_tool.get()              # Get transferred data
-has_data = user_tool.has_data()          # Check if data exists
-user_tool.clear()                        # Clear stored data
-schema = user_tool.get_schema()          # Get JSON schema
-json_data = user_tool.to_json()          # Get as JSON string
-```
-
-### Using Tools with Agents
-
-```python
-from claude_agent_toolkit import Agent, ExecutorType, ConnectionError, ExecutionError
+from claude_agent_toolkit import ConfigurationError, ConnectionError, ExecutionError
 
 try:
-    # Create tool (server starts automatically)
-    my_tool = MyTool(workers=2)
-
-    # Create agent with tools
-    agent = Agent(
-        system_prompt="You are a helpful assistant specialized in calculations",
-        tools=[my_tool],
-        executor=ExecutorType.DOCKER  # Optional - Docker is default
-    )
-
-    # Run agent with prompt (verbose=True prints detailed output to console)
-    result = await agent.run(
-        "Please increment the counter twice and tell me the result",
-        verbose=True  # Prints detailed execution info to console
-    )
-    print(f"Response: {result}")  # result is the string response
-    
-except ConnectionError as e:
-    print(f"Connection issue: {e}")
-    # Handle Docker, network, or port binding problems
-    
-except ExecutionError as e:
-    print(f"Execution failed: {e}")
-    # Handle agent execution or tool failures
+    result = await agent.run("task")
+except ConfigurationError:
+    # Missing OAuth token, invalid config
+except ConnectionError:
+    # Docker/network issues
+except ExecutionError:
+    # Tool failures, timeouts
 ```
 
-## Model Selection
+### Can I use multiple tools together?
 
-Choose the right Claude model for your agent's needs:
-
-### Available Models
-- **"haiku"** - Fast and efficient for simple tasks
-- **"sonnet"** - Balanced performance (good default choice)
-- **"opus"** - Most capable for complex reasoning
-
-### Usage Examples
+Yes! Claude Code intelligently orchestrates multiple tools:
 
 ```python
-from claude_agent_toolkit import Agent, ExecutorType
-
-# Use fast Haiku model for simple tasks
-weather_agent = Agent(
-    system_prompt="You are a weather assistant",
-    tools=[weather_tool],
-    model="haiku"  # Fast, efficient for simple weather queries
-)
-
-# Use Sonnet for general-purpose tasks
-general_agent = Agent(
-    system_prompt="You are a helpful assistant", 
-    tools=[calculator_tool, weather_tool],
-    model="sonnet",  # Balanced performance
-    executor=ExecutorType.SUBPROCESS  # Use subprocess for this example
-)
-
-# Use Opus for complex analysis
-analysis_agent = Agent(
-    system_prompt="You are a data analyst",
-    tools=[analysis_tool],
-    model="opus"  # Maximum reasoning capability
-)
-
-# Override model for specific queries
-result = await weather_agent.run(
-    "Complex weather pattern analysis for next month",
-    model="opus"  # Use more capable model for this specific task
-)
-print(f"Analysis result: {result}")
-
-# Full model IDs also work
-agent = Agent(model="claude-3-5-haiku-20241022")
-```
-
-### When to Use Each Model
-- **Haiku**: Simple queries, basic operations, fast responses needed
-- **Sonnet**: General purpose tasks, good balance of speed and capability
-- **Opus**: Complex reasoning, detailed analysis, maximum quality needed
-
-## Why Claude Code Agents?
-
-Unlike generic agent frameworks, this toolkit specifically leverages Claude Code's unique capabilities:
-
-1. **Advanced Reasoning** - Use Claude Code's sophisticated decision-making in your agents
-2. **Existing Subscription** - Build production agents with your current Claude Code subscription
-3. **Stateful Workflows** - Claude Code builds context across multiple tool interactions
-4. **Intelligent Orchestration** - Claude Code decides which tools to use and when
-5. **Production Infrastructure** - Leverage Claude's robust infrastructure for your agents
-
-### Example: Intelligent Workflow
-
-```python
-# Claude Code analyzes data with one tool, then decides to process it with another
-# The agent maintains context and makes intelligent decisions about tool usage
-# Your tools provide capabilities, Claude Code provides the intelligence
-```
-
-## API Reference
-
-### Agent Class
-
-```python
-class Agent:
-    def __init__(                                          # Initialize agent
-        self,
-        oauth_token: Optional[str] = None,                 # Your Claude Code token
-        system_prompt: Optional[str] = None,               # Custom agent behavior
-        tools: Optional[List[BaseTool]] = None,            # Tools to connect automatically
-        model: Optional[Union[Literal["opus", "sonnet", "haiku"], str]] = None,  # Model selection
-        executor: Optional[ExecutorType] = None            # Executor type (Docker/Subprocess)
-    )
-    def connect(self, tool: BaseTool) -> 'Agent'           # Connect custom tools  
-    async def run(                                         # Run Claude Code with tools
-        self,
-        prompt: str,                                       # Instruction for Claude
-        verbose: bool = False,                             # Print detailed output to console
-        model: Optional[Union[Literal["opus", "sonnet", "haiku"], str]] = None  # Override model
-    ) -> str                                               # Returns Claude's response as string
-```
-
-### BaseTool Class  
-
-```python
-class BaseTool:
-    def __init__(self, host="127.0.0.1", port=None, *, workers=None, log_level="ERROR")
-    @property def connection_url(self) -> str  # Always accessible after construction
-    @property def health_url(self) -> str      # Always accessible after construction
-    def __enter__(self) -> 'BaseTool'          # Context manager support
-    def __exit__(self, exc_type, exc_val, exc_tb) -> bool
-    def __del__(self)                          # Automatic cleanup on destruction
-```
-
-### @tool() Decorator
-
-```python
-@tool(
-    name: Optional[str] = None,           # Tool method name
-    description: str = "",               # Method description  
-    parallel: bool = False,              # Use process pool
-    timeout_s: int = 60,                 # Timeout for parallel operations
+agent = Agent(tools=[calc_tool, weather_tool, file_tool])
+result = await agent.run(
+    "Calculate the average temperature and save results to report.txt"
 )
 ```
 
-### Exception Classes
+## Testing
 
-Claude Agent Toolkit provides specific exception types for clear error handling:
+The framework is validated through comprehensive examples rather than traditional unit tests. Each example demonstrates specific capabilities and serves as both documentation and validation.
 
-```python
-# Import exception classes
-from claude_agent_toolkit import (
-    ClaudeAgentError,     # Base exception for all library errors
-    ConfigurationError,   # Missing OAuth tokens, invalid configuration
-    ConnectionError,      # Docker, network, port binding failures  
-    ExecutionError,       # Agent execution, tool failures, timeouts
-)
+### Run Examples
 
-# Exception hierarchy
-ClaudeAgentError
-├── ConfigurationError    # Configuration issues
-├── ConnectionError       # Network/service connectivity
-└── ExecutionError       # Runtime execution failures
-```
-
-**When to catch each exception:**
-
-- **ConfigurationError**: Handle setup issues, missing tokens, invalid configs
-- **ConnectionError**: Handle Docker, network, and port binding failures
-- **ExecutionError**: Handle runtime failures, timeouts, tool execution issues
-- **ClaudeAgentError**: Catch all library errors with a single handler
-
-## Development Workflow
-
-### 1. Start Docker Desktop
-Required for agent execution - must be running before creating Claude Code agents.
-
-### 2. Set OAuth Token  
 ```bash
-export CLAUDE_CODE_OAUTH_TOKEN='your-token-here'
-```
+# Clone the repository
+git clone https://github.com/cheolwanpark/claude-agent-toolkit.git
+cd claude-agent-toolkit
 
-### 3. Create Custom Tools
-Inherit from `BaseTool` and implement `@tool` methods that extend Claude Code's capabilities.
-
-### 4. Build Your Agent  
-Use the examples in `src/examples/` to see demonstrations or create custom agent scripts.
-
-### 5. Deploy to Production
-Use your Claude Code subscription to run agents at scale with custom tool integration.
-
-## Dependencies
-
-### Runtime Dependencies
-- `docker>=7.1.0` - Docker container management
-- `fastmcp>=2.11.3` - MCP server framework
-- `httpx>=0.28.1` - HTTP client for health checks
-  
-- `uvicorn>=0.35.0` - ASGI server for MCP HTTP endpoints
-
-### Docker Environment  
-- Python 3.11 with Claude Code SDK
-- Node.js 20 with Claude Code CLI
-- Non-root user execution for security
-
-## Error Handling
-
-Claude Agent Toolkit uses specific exception types to help you handle errors gracefully:
-
-```python
-from claude_agent_toolkit import (
-    Agent, BaseTool, tool, ExecutorType,
-    ClaudeAgentError, ConfigurationError, ConnectionError,
-    ExecutionError
-)
-
-# Handle specific error types
-try:
-    agent = Agent(
-        oauth_token="your-token",
-        tools=[MyTool()],
-        executor=ExecutorType.SUBPROCESS
-    )
-    result = await agent.run("Process my request")
-    print(f"Result: {result}")
-    
-except ConfigurationError as e:
-    print(f"Configuration issue: {e}")
-    # Handle missing OAuth token, invalid tool config
-    
-except ConnectionError as e:
-    print(f"Connection failed: {e}")
-    # Handle Docker, network, port binding issues
-    
-except ExecutionError as e:
-    print(f"Execution failed: {e}")
-    # Handle agent execution, tool failures, timeouts
-    
-    
-except ClaudeAgentError as e:
-    print(f"Library error: {e}")
-    # Catch all library errors
-```
-
-## Troubleshooting
-
-### Common Issues
-
-**ConfigurationError: "OAuth token required"**
-```python
-# Set environment variable
+# Set your OAuth token
 export CLAUDE_CODE_OAUTH_TOKEN='your-token-here'
 
-# Or pass directly to Agent
-agent = Agent(oauth_token='your-token-here')
+# Run different examples
+cd src/examples/calculator && python main.py     # Stateful operations, parallel processing
+cd src/examples/weather && python main.py       # External API integration
+cd src/examples/subprocess && python main.py    # No Docker required
+cd src/examples/filesystem && python main.py    # Permission-based file access
+cd src/examples/datatransfer && python main.py  # Type-safe data transfer
 ```
 
-**ConnectionError: "Cannot connect to Docker"**
-- Ensure Docker Desktop is running
-- Check Docker daemon is accessible
-- Linux: `sudo systemctl start docker`
+### Example Structure
 
-**ConnectionError: "Port binding failed"**
-```python
-# Let tools auto-select available ports
-tool = MyTool()  # Auto-selects port
-
-# Or specify different port
-tool = MyTool(port=9000)
+```
+src/examples/
+├── calculator/     # Mathematical operations with state management
+├── weather/        # External API integration (OpenWeatherMap)
+├── subprocess/     # Subprocess executor demonstration
+├── filesystem/     # FileSystemTool with permissions
+├── datatransfer/   # DataTransferTool with Pydantic models
+└── README.md       # Detailed example documentation
 ```
 
-**ConnectionError: "Tool server failed to start"**
-```python
-# Tool server starts automatically in constructor
-tool = MyTool()  # Server starts immediately
-url = tool.connection_url  # Always accessible after construction
-```
+### Docker Validation
 
-**ExecutionError: "Operation timed out"**
-```python
-# Increase timeout for parallel operations
-@tool(parallel=True, timeout_s=300)  # 5 minute timeout
-def heavy_computation(self, data: str) -> dict:
-    # Parallel operations must be sync functions
-    return {"result": "processed"}
-```
+Examples can run with both executors:
 
-### Debug Mode
-```python
-from claude_agent_toolkit import set_logging, LogLevel
+```bash
+# Docker executor (default)
+python main.py
 
-# Enable detailed logging
-set_logging(LogLevel.DEBUG, show_time=True, show_level=True)
-
-# Run with verbose output (prints to console)
-result = await agent.run("your prompt", verbose=True)
-print(f"Response: {result}")
+# Subprocess executor (faster startup)
+# Examples automatically use subprocess when Docker unavailable
 ```
 
 ## Contributing
 
-1. Create custom tools for different Claude Code agent use cases
-2. Add new agent development patterns and templates
-3. Improve Docker image efficiency and security
-4. Enhance state management and conflict resolution
-5. Add support for additional MCP server types
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature-name`
+3. Make your changes and validate with examples
+4. Run examples to verify functionality
+5. Submit a pull request
+
+### Development Setup
+
+```bash
+git clone https://github.com/cheolwanpark/claude-agent-toolkit.git
+cd claude-agent-toolkit
+uv sync --group dev
+
+# Validate your changes by running examples
+export CLAUDE_CODE_OAUTH_TOKEN='your-token'
+cd src/examples/calculator && python main.py
+```
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Related Projects
+---
 
-- [Claude Code](https://claude.ai/code) - Official Claude Code interface (required for this framework)
-- [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) - Protocol for AI-tool integration
-- [FastMCP](https://github.com/jlowin/fastmcp) - Fast MCP server implementation
+**Created by**: [Cheolwan Park](https://github.com/cheolwanpark) • **Blog**: [Project Background](https://blog.codingvillain.com/post/claude-agent-toolkit)
+
+**Links**: [Homepage](https://github.com/cheolwanpark/claude-agent-toolkit) • [Claude Code](https://claude.ai/code) • [Issues](https://github.com/cheolwanpark/claude-agent-toolkit/issues) • [Model Context Protocol](https://modelcontextprotocol.io/)
