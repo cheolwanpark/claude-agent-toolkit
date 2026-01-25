@@ -101,8 +101,8 @@ cd src/examples/subprocess && python main.py  # No Docker needed
 ```python
 # Available models
 agent = Agent(model="haiku")   # Fast, low cost
-agent = Agent(model="sonnet")  # Balanced (default)
-agent = Agent(model="opus")    # Most capable
+agent = Agent(model="sonnet")  # Balanced
+agent = Agent(model="opus")    # Most capable (default)
 
 # Override per run
 result = await agent.run("Simple task", model="haiku")
@@ -177,7 +177,7 @@ Agent(
     oauth_token: str = None,  # Or use CLAUDE_CODE_OAUTH_TOKEN env var
     system_prompt: str = None,
     tools: List[BaseTool] = None,
-    model: str = "sonnet",  # "haiku", "sonnet", "opus"
+    model: str = "opus",  # "haiku", "sonnet", "opus"
     executor: ExecutorType = ExecutorType.DOCKER
 )
 
