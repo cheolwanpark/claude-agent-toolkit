@@ -135,7 +135,7 @@ class Agent:
         self, 
         prompt: str, 
         verbose: bool = False,
-        model: Union[Literal["opus", "sonnet", "haiku"], str] = "sonnet"
+        model: Union[Literal["opus", "sonnet", "haiku"], str] = "opus"
     ) -> str:
         """
         Run the agent with the given prompt.
