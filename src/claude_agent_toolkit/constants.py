@@ -38,7 +38,7 @@ CONTAINER_UUID_LENGTH = 8
 
 # Model ID mappings (short aliases to full model IDs)
 MODEL_ID_MAPPING = {
-    "opus": "claude-opus-4-1-20250805",
+    "opus": "claude-opus-4-5-20251101",
     "sonnet": "claude-sonnet-4-5-20250929",
-    "haiku": "claude-3-5-haiku-20241022"
+    "haiku": "claude-haiku-4-5-20251001"
 }
