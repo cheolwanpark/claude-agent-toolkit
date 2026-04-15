@@ -5,5 +5,6 @@ Additional MCP tools for the Claude Agent Toolkit.
 
 from .filesystem import FileSystemTool
 from .datatransfer import DataTransferTool
+from .websearch import WebSearchTool
 
-__all__ = ["FileSystemTool", "DataTransferTool"]
+__all__ = ["FileSystemTool", "DataTransferTool", "WebSearchTool"]

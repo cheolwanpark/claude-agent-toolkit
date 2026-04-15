@@ -89,7 +89,7 @@ agent = Agent(tools=[CalculatorTool()])
 | **Runtime Isolation** | No built-in isolation<br/>You need to design your own | Docker by default<br/>Allows only tools you explicitly added |
 | **Environment Consistency** | Manual environment setup<br/>Explicit tool/option configuration required | Zero setup needed<br/>Works out of the box |
 | **Setup Complexity** | ~20 lines just for ClaudeCodeOptions configuration | ~25 lines for complete agent with calculator<br/>`Agent.run(verbose=True)` shows all responses |
-| **Built-in Tools** | Build everything from scratch | FileSystemTool with permission control<br/>DataTransferTool for formatted output handling |
+| **Built-in Tools** | Build everything from scratch | FileSystemTool with permission control<br/>DataTransferTool for formatted output handling<br/>WebSearchTool with You.com provider + fallback |
 | **Best For** | Using Claude Code as-is<br/>Minimal dependencies only | Fast development<br/>Using Claude Code as reasoning engine (like LangGraph agents) |
 
 ## Quick Start
@@ -402,6 +402,46 @@ if user_data:
     print(f"Retrieved: {user_data.name}, age {user_data.age}")
 ```
 
+### WebSearchTool - You.com Search Provider (with fallback)
+
+Add high-signal web retrieval for agent workflows using [You.com Search API](https://documentation.you.com/api-reference/search).
+
+```python
+import os
+from claude_agent_toolkit import Agent
+from claude_agent_toolkit.tools import WebSearchTool
+
+# Required for primary provider
+os.environ["YDC_API_KEY"] = "your-youcom-api-key"
+
+search_tool = WebSearchTool(
+    default_count=5,
+    default_country="US",
+    default_language="EN",
+    fallback_to_duckduckgo=True,
+)
+
+agent = Agent(
+    system_prompt="You are a research assistant. Cite URLs.",
+    tools=[search_tool],
+)
+
+result = await agent.run(
+    "Find two recent sources on MCP adoption trends and summarize key points."
+)
+```
+
+**Environment setup:**
+
+```bash
+export YDC_API_KEY='your-youcom-api-key'
+```
+
+**Fallback & error handling behavior:**
+- If `YDC_API_KEY` is missing, invalid, rate-limited, or You.com is unavailable, tool can automatically fall back to DuckDuckGo instant results (`fallback_to_duckduckgo=True`).
+- Response includes `fallback_used` and `primary_provider_error` when fallback is used.
+- If fallback is disabled, the tool returns structured error payloads instead of raising uncaught exceptions.
+
 ## Creating Custom Tools
 
 ### Basic Tool Pattern
@@ -523,6 +563,7 @@ cd src/examples/subprocess && python main.py    # No Docker required
 cd src/examples/filesystem && python main.py    # Permission-based file access
 cd src/examples/datatransfer && python main.py  # Type-safe data transfer
 cd src/examples/mcp && python main.py           # External MCP server integration
+cd src/examples/websearch && python main.py     # You.com Search API integration + fallback
 ```
 
 ### Example Structure
@@ -535,6 +576,7 @@ src/examples/
 ├── filesystem/     # FileSystemTool with permissions
 ├── datatransfer/   # DataTransferTool with Pydantic models
 ├── mcp/           # External MCP server integration (stdio, HTTP)
+├── websearch/     # WebSearchTool with You.com provider + fallback
 └── README.md      # Detailed example documentation
 ```
 

@@ -7,7 +7,8 @@ This directory contains practical examples demonstrating the Claude Agent Toolki
 1. **Claude Code OAuth Token** - Get your token from [claude.ai/code](https://claude.ai/code)
 2. **Python 3.12+** with uv package manager
 3. **Docker Desktop** - Required for most examples (except subprocess)
-4. **Internet Connection** - For weather example and MCP external servers
+4. **Internet Connection** - For weather, websearch, and MCP external servers
+5. **YDC_API_KEY** (optional but recommended) - For You.com Search API primary provider
 
 ## Setup
 
@@ -181,6 +182,29 @@ python main.py                 # Demo: single models, multiple models, complex d
 - Automatic schema inclusion in descriptions
 - Nested model support
 - Multiple tools in single agent
+
+
+---
+
+### WebSearch (`websearch/`)
+
+**Web search tool with You.com as primary provider and DuckDuckGo fallback**
+
+```bash
+cd websearch
+python main.py
+```
+
+**What it demonstrates:**
+- Built-in WebSearchTool usage
+- You.com Search API integration via `YDC_API_KEY`
+- Automatic fallback behavior when primary provider is unavailable
+- Structured result payloads for agent reasoning and citation
+
+**Key features:**
+- Provider-aware responses (`provider`, `fallback_used`)
+- Optional freshness/country/language controls
+- Graceful error handling without uncaught exceptions
 
 ## Common Patterns
 
