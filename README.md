@@ -323,6 +323,62 @@ agent = Agent(
 result = await agent.run("Use the everything server to echo 'Hello World'")
 ```
 
+### Web Search and Page Fetching with Parallel
+
+[Parallel Search MCP](https://docs.parallel.ai/integrations/mcp/search-mcp)
+provides `web_search` for current information and `web_fetch` for reading specific
+URLs. The anonymous endpoint is free for light use, needs no Parallel account or
+API key, and uses Fast mode for search. Free access has rate limits.
+
+From the repository root, install the toolkit with its locked dependencies and
+activate the environment (Python 3.12+ and `uv` are required):
+
+```bash
+uv sync --locked --no-dev --package claude-agent-toolkit
+source .venv/bin/activate
+```
+
+Configure the existing HTTP wrapper:
+
+```python
+from claude_agent_toolkit.tool.mcp import HttpMCPTool
+
+parallel_search = HttpMCPTool(
+    url="https://search.parallel.ai/mcp",
+    name="parallel-search",
+)
+```
+
+Add `parallel_search` to your agent's `tools` list alongside any existing tools.
+The server uses Streamable HTTP, so no local MCP server or `npx` process is needed.
+Your agent still needs its usual Claude Code OAuth token and executor setup.
+
+To check the connection and list the available tool IDs without invoking Claude,
+run this after the configuration above:
+
+```python
+import asyncio
+
+from claude_agent_toolkit import list_tools
+
+async def check_connection():
+    for tool in await list_tools(parallel_search):
+        print(tool.mcp_tool_id)
+
+asyncio.run(check_connection())
+```
+
+The list includes `mcp__parallel-search__web_search` and
+`mcp__parallel-search__web_fetch`. In a notebook, use
+`await check_connection()` instead of `asyncio.run(...)`.
+
+For a research task, ask your agent: "Use Parallel to find the latest Python
+release on python.org, fetch the release page, and summarize the changes with
+source URLs." Search finds candidate pages; fetch reads the selected URLs.
+If the service reports a rate limit, wait before retrying. See the
+[Search MCP setup guide](https://docs.parallel.ai/integrations/mcp/search-mcp)
+for service limits and authentication options for higher usage.
+
 ### When to Use External MCP Integration
 
 - **Existing MCP Ecosystem**: Leverage community MCP servers and tools
